@@ -2,103 +2,259 @@ import { MotionSample } from '../types/sensor'
 import { StepEvent } from '../types/gait'
 import { GravitySample } from '../types/gravity'
 
-type GaitListener = (stepCount: number, stepFreq: number, steps: StepEvent[]) => void
+export enum GaitState {
+  Idle = 'idle',
+  Candidate = 'candidate',
+  Walking = 'walking',
+  Running = 'running',
+}
+
+type GaitListener = (
+  totalSteps: number,
+  stepFreq: number,
+  state: GaitState,
+  steps: StepEvent[]
+) => void
 
 export class GaitDetector {
-  private samples: MotionSample[] = []
+
+  // =========================
+  // 参数
+  // =========================
+  private readonly sampleRate = 50
+  private readonly minStepInterval = 300
+  private readonly maxStepInterval = 2000
+  private readonly freqWindowMs = 3000
+  private readonly bufferSize = 256
+
+  private readonly lowCut = 0.5
+  private readonly highCut = 4.0
+
+  private readonly runningFreqThreshold = 2.5  // Hz
+
+  // =========================
+  // 状态
+  // =========================
+  private state: GaitState = GaitState.Idle
   private listener?: GaitListener
-  private maxSamples: number = 200 // 保存最近200个采样
-  private lastStepTime: number = 0
-  private totalStepCount: number = 0
+
+  private totalSteps = 0
+  private lastStepTime = 0
+
+  private recentSteps: StepEvent[] = []
+  private candidateSteps = 0
+
+  // 滤波缓存
+  private filteredBuffer: number[] = []
+  private timeBuffer: number[] = []
+
+  // IIR状态
+  private hpLast = 0
+  private lpLast = 0
+  private prevInput = 0
 
   constructor(listener?: GaitListener) {
     this.listener = listener
   }
 
-  pushSample(sample: MotionSample, g : GravitySample) {
-    this.samples.push(sample)
+  // =========================
+  // 主入口
+  // =========================
+  pushSample(sample: MotionSample, g: GravitySample) {
+    if (g.gNormal === 0) return
 
-    // 限制缓存大小
-    if (this.samples.length > this.maxSamples) {
-      this.samples.splice(0, this.samples.length - this.maxSamples)
-    }
+    const t = sample.timestamp
+    const vertical = this.computeVertical(sample, g)
+    const filtered = this.bandpass(vertical)
 
-    // 检测步数
-    const steps = this.detectPeaksHorizontal(this.samples, g, this.lastStepTime)
-    const stepFreq = this.computeStepFrequency(steps)
-    // 更新
-    this.lastStepTime = steps.length ?
-                        steps[steps.length - 1].timestamp :
-                        this.lastStepTime
-    this.totalStepCount += steps.length
+    this.pushBuffer(this.filteredBuffer, filtered)
+    this.pushBuffer(this.timeBuffer, t)
 
+    if (this.filteredBuffer.length < 5) return
+
+    const step = this.detectPeak()
+    if (!step) return
+
+    this.handleStep(step)
+
+    const freq = this.computeStepFrequency()
+    console.log(this.totalSteps, freq)
     if (this.listener) {
-      this.listener(this.totalStepCount, stepFreq, steps)
+      this.listener(this.totalSteps, freq, this.state, [step])
     }
   }
-  
-  detectPeaksHorizontal(
-    samples: MotionSample[], g: GravitySample, lastStepTime: number,
-    threshold = 0.5, minInterval = 300,
-  ): StepEvent[] {
-    const steps: StepEvent[] = []
 
-    const gNorm = g.gNormal
-    if (gNorm === 0){
-       return steps
+  // =========================
+  // 计算竖直分量
+  // =========================
+  private computeVertical(sample: MotionSample, g: GravitySample): number {
+    const a = sample.accel
+    const u = g.gUnit
+
+    return a.x * u.x + a.y * u.y + a.z * u.z
+  }
+
+  // =========================
+  // 峰值检测（因果）
+  // =========================
+  private detectPeak(): StepEvent | null {
+    console.log(this.motionEnergy())
+    if (this.motionEnergy() < 0.1) {
+      this.resetFSM()
+      return null
     }
 
-    const gUnit = g.gUnit
-    for (let i = 1; i < samples.length - 1; i++) {
-      const a = samples[i].accel
+    const n = this.filteredBuffer.length
 
-      // 去重力方向投影
-      const dot = a.x * gUnit.x + a.y * gUnit.y + a.z * gUnit.z
-      const aHorizontal = {
-        x: a.x - dot * gUnit.x,
-        y: a.y - dot * gUnit.y,
-        z: a.z - dot * gUnit.z,
-      }
+    const prev = this.filteredBuffer[n - 3]
+    const curr = this.filteredBuffer[n - 2]
+    const next = this.filteredBuffer[n - 1]
+    const currTime = this.timeBuffer[n - 2]
 
-      // 水平加速度模长
-      const norm = Math.sqrt(
-        aHorizontal.x * aHorizontal.x +
-        aHorizontal.y * aHorizontal.y +
-        aHorizontal.z * aHorizontal.z
-      )
+    const threshold = this.dynamicThreshold()
+    console.log(curr, prev, next, threshold)
+    if (!(curr > prev && curr > next && curr > threshold))
+      return null
 
-      // 局部峰值检测
-      const prev = samples[i - 1].accel
-      const next = samples[i + 1].accel
+    const interval = this.lastStepTime === 0
+      ? 0
+      : currTime - this.lastStepTime
 
-      // 对比模长而不是原始分量
-      const prevNorm = Math.sqrt(
-        Math.pow(prev.x - g.gravity.x, 2) + 
-        Math.pow(prev.y - g.gravity.y, 2) + 
-        Math.pow(prev.z - g.gravity.z, 2)
-      )
-      const nextNorm = Math.sqrt(
-        Math.pow(next.x - g.gravity.x, 2) + 
-        Math.pow(next.y - g.gravity.y, 2) + 
-        Math.pow(next.z - g.gravity.z, 2)
-      )
-      if (norm > prevNorm && norm > nextNorm && norm > threshold) {
-        if (samples[i].timestamp - lastStepTime >= minInterval) {
-          steps.push({ timestamp: samples[i].timestamp })
-          lastStepTime = samples[i].timestamp
+    console.log(interval, this.minStepInterval, this.maxStepInterval)
+    // ===== 自动重启逻辑 =====
+    if (this.lastStepTime !== 0 &&
+        interval > this.maxStepInterval) {
+      this.resetFSM()
+    }
+
+    if (this.lastStepTime === 0 ||
+        interval > this.minStepInterval) {
+      return { timestamp: currTime }
+    }
+
+    return null
+  }
+
+  // =========================
+  // FSM处理
+  // =========================
+  private handleStep(step: StepEvent) {
+    const t = step.timestamp
+
+    this.lastStepTime = t
+    this.totalSteps++
+
+    this.recentSteps.push(step)
+    this.cleanupRecentSteps(t)
+
+    const freq = this.computeStepFrequency()
+
+    switch (this.state) {
+
+      case GaitState.Idle:
+        this.state = GaitState.Candidate
+        this.candidateSteps = 1
+        break
+
+      case GaitState.Candidate:
+        this.candidateSteps++
+        if (this.candidateSteps >= 2) {
+          this.state = GaitState.Walking
         }
-      }
+        break
+
+      case GaitState.Walking:
+        if (freq > this.runningFreqThreshold) {
+          this.state = GaitState.Running
+        }
+        break
+
+      case GaitState.Running:
+        if (freq < this.runningFreqThreshold * 0.8) {
+          this.state = GaitState.Walking
+        }
+        break
     }
-    return steps
   }
-  
-  computeStepFrequency(steps: StepEvent[]): number {
-    if (steps.length < 2) return 0
-    const intervals: number[] = []
-    for (let i = 1; i < steps.length; i++) {
-      intervals.push(steps[i].timestamp - steps[i - 1].timestamp)
+
+  private resetFSM() {
+    this.state = GaitState.Idle
+    this.candidateSteps = 0
+  }
+
+  // =========================
+  // 步频计算（滑动窗口）
+  // =========================
+  private cleanupRecentSteps(now: number) {
+    while (
+      this.recentSteps.length > 0 &&
+      now - this.recentSteps[0].timestamp > this.freqWindowMs
+    ) {
+      this.recentSteps.shift()
     }
-    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length
-    return 1000 / avgInterval
+  }
+
+  private computeStepFrequency(): number {
+    if (this.recentSteps.length < 2) return 0
+
+    const duration =
+      this.recentSteps[this.recentSteps.length - 1].timestamp -
+      this.recentSteps[0].timestamp
+
+    if (duration <= 0) return 0
+
+    return (this.recentSteps.length - 1) * 1000 / duration
+  }
+
+  // =========================
+  // 动态阈值
+  // =========================
+  private dynamicThreshold(): number {
+    const n = this.filteredBuffer.length
+    const window = Math.min(100, n)
+
+    let sum = 0
+    for (let i = n - window; i < n; i++) {
+      sum += this.filteredBuffer[i] ** 2
+    }
+
+    return Math.sqrt(sum / window) * 0.6
+  }
+
+  // =========================
+  // 带通滤波
+  // =========================
+  private bandpass(x: number): number {
+    const dt = 1 / this.sampleRate
+
+    const rcHigh = 1 / (2 * Math.PI * this.lowCut)
+    const alphaHigh = rcHigh / (rcHigh + dt)
+
+    const hp = alphaHigh * (this.hpLast + x - this.prevInput)
+    this.hpLast = hp
+    this.prevInput = x
+
+    const rcLow = 1 / (2 * Math.PI * this.highCut)
+    const alphaLow = dt / (rcLow + dt)
+
+    const lp = this.lpLast + alphaLow * (hp - this.lpLast)
+    this.lpLast = lp
+
+    return lp
+  }
+
+  private pushBuffer(arr: number[], value: number) {
+    arr.push(value)
+    if (arr.length > this.bufferSize) arr.shift()
+  }
+
+  private motionEnergy(): number {
+    const n = this.filteredBuffer.length
+    const window = Math.min(50, n)
+    let sum = 0
+    for (let i = n - window; i < n; i++) {
+      sum += Math.abs(this.filteredBuffer[i])
+    }
+    return sum / window
   }
 }
