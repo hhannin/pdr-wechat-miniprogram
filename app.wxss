@@ -1,0 +1,10 @@
+page {
+  background-color: #000000;
+  color: #00ff88;
+  font-family: monospace;
+}
+button {
+  background-color: #222;
+  color: #00ff88;
+  border: 1px solid #00ff88;
+}

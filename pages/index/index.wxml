@@ -1,0 +1,19 @@
+<view class="container">
+  <view class="title">PDR Sensor Debug</view>
+  <view class="status">
+    Status: {{running ? "Running" : "Stopped"}}
+  </view>
+  <view class="data">
+    <text>ax: {{ax}}</text>
+    <text>ay: {{ay}}</text>
+    <text>az: {{az}}</text>
+    <text>gx: {{gx}}</text>
+    <text>gy: {{gy}}</text>
+    <text>gz: {{gz}}</text>
+    <text>时间戳: {{timestamp}}</text>
+    <text>时间: {{timeString}}</text>
+  </view>
+  <button bindtap="toggle">
+    {{running ? "Stop" : "Start"}}
+  </button>
+</view>

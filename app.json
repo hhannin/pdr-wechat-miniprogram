@@ -1,0 +1,13 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "PDR Debug",
+    "navigationBarBackgroundColor": "#000000",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#000000"
+  },
+  "style": "v2",
+  "componentFramework": "glass-easel"
+}
