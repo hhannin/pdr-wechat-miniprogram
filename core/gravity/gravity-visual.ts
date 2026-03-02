@@ -1,17 +1,9 @@
-// utils/canvas-3d-util.ts
+import { GravitySample } from '../../core/types/gravity'
 
-import { GravitySample } from '../core/types/gravity'
 
-/**
- * 在Canvas上绘制3D重力方向
- * @param ctx Canvas 2D上下文
- * @param g 重力采样数据
- * @param canvasSize 画布尺寸（默认300）
- */
+
 export function drawGravity3D(
-  ctx: wx.CanvasRenderingContext2D, 
-  g: GravitySample, 
-  canvasSize: number = 300
+  ctx: any, g: GravitySample, canvasSize: number = 300
 ): void {
   const center = canvasSize / 2
   const radius = 80  // 球体半径

@@ -1,9 +1,11 @@
 import { MotionAdapter } from '../../infra/sensor/motion-adapter'
 import { DataFlow } from '../../core/pipeline/data-flow'
 import { GravityEstimator } from '../../core/gravity/gravity-estimator'
+import { GaitDetector } from '../../core/gait/gait-detector'
 import { requestMotionPermission } from '../../infra/sensor/permission'
-import { formatTimestamp } from '../../utils/format-util'  // 导入工具函数
-import { drawGravity3D } from '../../utils/canvas-3d-util'      // 导入绘图函数
+import { formatTimestamp } from '../../utils/format-util'
+import { drawGravity3D } from '../../core/gravity/gravity-visual'
+
 
 Page({
   // 页面响应式数据
@@ -12,13 +14,14 @@ Page({
     ax: 0, ay: 0, az: 0,
     gx: 0, gy: 0, gz: 0,
     gravityX: 0, gravityY: 0, gravityZ: 0,
-    timestamp: 0,
-    timeString: ""
+    timestamp: 0,timeString: "",
+    stepCount: 0,stepFreq: 0,
   },
 
   adapter: null as MotionAdapter | null,
   flow: null as DataFlow | null,
   gravityEstimator: null as GravityEstimator | null,
+  gaitDetector: null as GaitDetector | null,
   canvasNode: null as any,  // Canvas Node
   ctx: null as any,         // Canvas 2D Context
 
@@ -36,6 +39,10 @@ Page({
     this.adapter = new MotionAdapter()
     this.flow = new DataFlow()
     this.gravityEstimator = new GravityEstimator(0.8)
+    // 初始化步态检测器
+    this.gaitDetector = new GaitDetector((stepCount, stepFreq) => {
+      this.setData({ stepCount, stepFreq })
+    })
 
     this.flow?.addProcessor(sample => {
       const timeString = formatTimestamp(sample.timestamp)
@@ -58,6 +65,9 @@ Page({
         timeString: timeString,
       })
       
+      // 推送到步态检测器
+      this.gaitDetector?.pushSample(sample, g)
+
       if (this.ctx) {
         drawGravity3D(this.ctx, g, 300)  // 调用导入的绘图函数
       }
