@@ -17,8 +17,9 @@ type GaitListener = (
 ) => void
 
 export class GaitDetector {
+
   // =========================
-  // 参数 (50Hz专用)
+  // 基础参数
   // =========================
   private readonly sampleRate = 50
   private readonly minStepInterval = 300
@@ -31,10 +32,13 @@ export class GaitDetector {
 
   private readonly runningFreqThreshold = 2.5
 
-  private readonly motionEnergyThreshold = 0.12
-  private readonly absPeakThreshold = 0.18
+  private readonly gyroWeight = 0.12
 
-  private readonly gyroWeight = 0.15
+  // 🔥 自适应参数
+  private readonly adaptiveFactor = 0.7
+  private readonly minPeakFloor = 0.05
+  private readonly lowEnergyThreshold = 0.03
+  private readonly idleTimeoutMs = 2000
 
   // =========================
   // 状态
@@ -44,6 +48,7 @@ export class GaitDetector {
 
   private totalSteps = 0
   private lastStepTime = 0
+  private lastMotionTime = 0
 
   private recentSteps: StepEvent[] = []
   private candidateSteps = 0
@@ -76,14 +81,19 @@ export class GaitDetector {
 
     if (this.fusedBuffer.length < 5) return
 
-    const avgMotionEnergy = this.motionEnergy()
-    if (avgMotionEnergy < this.motionEnergyThreshold) {
-      console.log("reset: ", avgMotionEnergy, this.motionEnergyThreshold)
-      this.resetFSM()
+    const energy = this.motionEnergy()
+
+    // 🔥 低能量仅用于回Idle
+    if (energy < this.lowEnergyThreshold) {
+      if (t - this.lastMotionTime > this.idleTimeoutMs) {
+        this.resetFSM()
+      }
       return
+    } else {
+      this.lastMotionTime = t
     }
 
-    const step = this.detectPeak()
+    const step = this.detectPeakAdaptive()
     if (!step) return
 
     this.handleStep(step)
@@ -91,7 +101,6 @@ export class GaitDetector {
     const freq = this.computeStepFrequency()
 
     if (this.listener) {
-      console.log(this.totalSteps, freq, this.state, step)
       this.listener(this.totalSteps, freq, this.state, [step])
     }
   }
@@ -102,48 +111,74 @@ export class GaitDetector {
   private computeFusion(sample: MotionSample, g: GravitySample): number {
     const a = sample.accel
     const u = g.gUnit
+    const gyro = sample.gyro
 
-    // 1️⃣ 竖直分量
-    const vertical = a.x * u.x + a.y * u.y + a.z * u.z
-
-    // 2️⃣ 线性加速度模长
     const linX = a.x - g.gravity.x
     const linY = a.y - g.gravity.y
     const linZ = a.z - g.gravity.z
-    const magnitude = Math.sqrt(linX * linX + linY * linY + linZ * linZ)
 
-    // 3️⃣ 陀螺仪能量
-    const gyro = sample.gyro
-    const gyroEnergy = Math.sqrt(
-      gyro.x * gyro.x +
-      gyro.y * gyro.y +
-      gyro.z * gyro.z
+    const linVertical =
+      linX * u.x +
+      linY * u.y +
+      linZ * u.z
+
+    const horizontal =
+      Math.sqrt(
+        linX * linX +
+        linY * linY +
+        linZ * linZ -
+        linVertical * linVertical
+      )
+
+    const gyroEnergy =
+      Math.sqrt(
+        gyro.x * gyro.x +
+        gyro.y * gyro.y +
+        gyro.z * gyro.z
+      )
+
+    return (
+      0.6 * Math.abs(linVertical) +
+      0.4 * horizontal +
+      this.gyroWeight * gyroEnergy
     )
-
-    // 4️⃣ 融合
-    return 0.5 * Math.abs(vertical) +
-           0.5 * magnitude +
-           this.gyroWeight * gyroEnergy
   }
 
-  private detectPeak(): StepEvent | null {
-    const n = this.fusedBuffer.length
+  // =========================
+  // 🔥 自适应峰值检测
+  // =========================
+  private detectPeakAdaptive(): StepEvent | null {
 
+    const n = this.fusedBuffer.length
     const prev = this.fusedBuffer[n - 3]
     const curr = this.fusedBuffer[n - 2]
     const next = this.fusedBuffer[n - 1]
     const currTime = this.timeBuffer[n - 2]
-    console.log("value: ", prev, curr, next, this.absPeakThreshold)
+
+    // 局部极大
     if (!(curr > prev && curr > next))
       return null
 
-    if (curr < this.absPeakThreshold)
+    // 🔥 自适应阈值
+    const avgAmp = this.motionEnergy()
+    const adaptiveThreshold =
+      Math.max(
+        this.adaptiveFactor * avgAmp,
+        this.minPeakFloor
+      )
+
+    if (curr < adaptiveThreshold)
       return null
 
-    const interval = this.lastStepTime === 0
-      ? 0
-      : currTime - this.lastStepTime
-    console.log(interval, this.minStepInterval, this.maxStepInterval)
+    // 防止微弱抖动
+    if (curr < prev * 1.05)
+      return null
+
+    const interval =
+      this.lastStepTime === 0
+        ? 0
+        : currTime - this.lastStepTime
+
     if (this.lastStepTime !== 0 &&
         interval > this.maxStepInterval) {
       this.resetFSM()
@@ -157,9 +192,12 @@ export class GaitDetector {
     return null
   }
 
+  // =========================
+  // 状态机
+  // =========================
   private handleStep(step: StepEvent) {
-    const t = step.timestamp
 
+    const t = step.timestamp
     this.lastStepTime = t
     this.totalSteps++
 
@@ -177,21 +215,18 @@ export class GaitDetector {
 
       case GaitState.Candidate:
         this.candidateSteps++
-        if (this.candidateSteps >= 2) {
+        if (this.candidateSteps >= 2)
           this.state = GaitState.Walking
-        }
         break
 
       case GaitState.Walking:
-        if (freq > this.runningFreqThreshold) {
+        if (freq > this.runningFreqThreshold)
           this.state = GaitState.Running
-        }
         break
 
       case GaitState.Running:
-        if (freq < this.runningFreqThreshold * 0.8) {
+        if (freq < this.runningFreqThreshold * 0.8)
           this.state = GaitState.Walking
-        }
         break
     }
   }
@@ -210,7 +245,6 @@ export class GaitDetector {
     }
   }
 
-  // 步频
   private computeStepFrequency(): number {
     if (this.recentSteps.length < 2) return 0
 
@@ -223,7 +257,6 @@ export class GaitDetector {
     return (this.recentSteps.length - 1) * 1000 / duration
   }
 
-  // 能量
   private motionEnergy(): number {
     const n = this.fusedBuffer.length
     const window = Math.min(50, n)
@@ -236,7 +269,6 @@ export class GaitDetector {
     return sum / window
   }
 
-  // 带通滤波
   private bandpass(x: number): number {
     const dt = 1 / this.sampleRate
 
