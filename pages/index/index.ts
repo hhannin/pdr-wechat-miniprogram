@@ -8,6 +8,8 @@ import { drawGravity3D } from '../../core/gravity/gravity-visual'
 import { HeadingEstimator } from '../../core/heading/heading-estimator'
 import { TurnDetector } from '../../core/heading/turn-detector'
 import { drawHeadingCompass } from '../../core/heading/heading-visual'
+import { IMUCalibrator } from '../../core/imu/imu-calibrator'
+import { MotionSample } from '../../core/types/sensor'
 
 Page({
   // 页面响应式数据
@@ -24,6 +26,7 @@ Page({
 
   adapter: null as MotionAdapter | null,
   flow: null as DataFlow | null,
+  calibrator: null as IMUCalibrator | null,
   gravityEstimator: null as GravityEstimator | null,
   gaitDetector: null as GaitDetector | null,
   headingEstimator: null as HeadingEstimator | null,
@@ -45,6 +48,7 @@ Page({
     // 2️⃣ 初始化适配器和数据流
     this.adapter = new MotionAdapter()
     this.flow = new DataFlow()
+    this.calibrator = new IMUCalibrator()
     this.gravityEstimator = new GravityEstimator()
     this.headingEstimator = new HeadingEstimator()
     this.turnDetector = new TurnDetector()
@@ -54,10 +58,6 @@ Page({
 
     this.flow?.addProcessor(sample => {
       const g = this.gravityEstimator!.update(sample)
-    
-      const heading = this.headingEstimator!.update(sample, g)
-    
-      const turnEvent = this.turnDetector!.update(heading)
     
       this.gaitDetector?.pushSample(sample, g)
     
@@ -73,21 +73,32 @@ Page({
         gravityX: g.gravity.x,
         gravityY: g.gravity.y,
         gravityZ: g.gravity.z,
-    
-        headingDeg: heading.headingDeg,
-        yawRate: heading.yawRate,
-    
-        turnDirection: turnEvent?.direction ?? '',
-        turnAngle: turnEvent?.angleDeg ?? 0,
-    
+        
         timestamp: sample.timestamp,
         timeString: formatTimestamp(sample.timestamp),
       })
       if (this.gravityCtx) {
         drawGravity3D(this.gravityCtx, g, 300)
       }
-      if (this.headingCtx) {
-        drawHeadingCompass(this.headingCtx, heading, 300)
+
+      this.calibrator!.update(sample.accel, sample.gyro)
+      if(this.calibrator!.isCalibrated()){
+        const correctedGyro = this.calibrator!.getCorrectedGyro(sample.gyro)
+        const correctSample: MotionSample = {
+          ...sample,  // 复制所有属性
+          gyro: correctedGyro  // 用新值覆盖 gyro
+        }
+        const heading = this.headingEstimator!.update(correctSample, g)
+        const turnEvent = this.turnDetector!.update(heading)
+        this.setData({
+          headingDeg: heading.headingDeg,
+          yawRate: heading.yawRate,
+          turnDirection: turnEvent?.direction ?? '',
+          turnAngle: turnEvent?.angleDeg ?? 0,  
+        })
+        if (this.headingCtx) {
+          drawHeadingCompass(this.headingCtx, heading, 300)
+        }
       }
     })
   },
