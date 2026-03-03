@@ -17,9 +17,8 @@ type GaitListener = (
 ) => void
 
 export class GaitDetector {
-
   // =========================
-  // 参数
+  // 参数 (50Hz专用)
   // =========================
   private readonly sampleRate = 50
   private readonly minStepInterval = 300
@@ -30,7 +29,12 @@ export class GaitDetector {
   private readonly lowCut = 0.5
   private readonly highCut = 4.0
 
-  private readonly runningFreqThreshold = 2.5  // Hz
+  private readonly runningFreqThreshold = 2.5
+
+  private readonly motionEnergyThreshold = 0.12
+  private readonly absPeakThreshold = 0.18
+
+  private readonly gyroWeight = 0.15
 
   // =========================
   // 状态
@@ -44,8 +48,7 @@ export class GaitDetector {
   private recentSteps: StepEvent[] = []
   private candidateSteps = 0
 
-  // 滤波缓存
-  private filteredBuffer: number[] = []
+  private fusedBuffer: number[] = []
   private timeBuffer: number[] = []
 
   // IIR状态
@@ -64,13 +67,21 @@ export class GaitDetector {
     if (g.gNormal === 0) return
 
     const t = sample.timestamp
-    const vertical = this.computeVertical(sample, g)
-    const filtered = this.bandpass(vertical)
 
-    this.pushBuffer(this.filteredBuffer, filtered)
+    const fused = this.computeFusion(sample, g)
+    const filtered = this.bandpass(fused)
+
+    this.pushBuffer(this.fusedBuffer, filtered)
     this.pushBuffer(this.timeBuffer, t)
 
-    if (this.filteredBuffer.length < 5) return
+    if (this.fusedBuffer.length < 5) return
+
+    const avgMotionEnergy = this.motionEnergy()
+    if (avgMotionEnergy < this.motionEnergyThreshold) {
+      console.log("reset: ", avgMotionEnergy, this.motionEnergyThreshold)
+      this.resetFSM()
+      return
+    }
 
     const step = this.detectPeak()
     if (!step) return
@@ -78,50 +89,61 @@ export class GaitDetector {
     this.handleStep(step)
 
     const freq = this.computeStepFrequency()
-    console.log(this.totalSteps, freq)
+
     if (this.listener) {
+      console.log(this.totalSteps, freq, this.state, step)
       this.listener(this.totalSteps, freq, this.state, [step])
     }
   }
 
   // =========================
-  // 计算竖直分量
+  // 双通道融合
   // =========================
-  private computeVertical(sample: MotionSample, g: GravitySample): number {
+  private computeFusion(sample: MotionSample, g: GravitySample): number {
     const a = sample.accel
     const u = g.gUnit
 
-    return a.x * u.x + a.y * u.y + a.z * u.z
+    // 1️⃣ 竖直分量
+    const vertical = a.x * u.x + a.y * u.y + a.z * u.z
+
+    // 2️⃣ 线性加速度模长
+    const linX = a.x - g.gravity.x
+    const linY = a.y - g.gravity.y
+    const linZ = a.z - g.gravity.z
+    const magnitude = Math.sqrt(linX * linX + linY * linY + linZ * linZ)
+
+    // 3️⃣ 陀螺仪能量
+    const gyro = sample.gyro
+    const gyroEnergy = Math.sqrt(
+      gyro.x * gyro.x +
+      gyro.y * gyro.y +
+      gyro.z * gyro.z
+    )
+
+    // 4️⃣ 融合
+    return 0.5 * Math.abs(vertical) +
+           0.5 * magnitude +
+           this.gyroWeight * gyroEnergy
   }
 
-  // =========================
-  // 峰值检测（因果）
-  // =========================
   private detectPeak(): StepEvent | null {
-    console.log(this.motionEnergy())
-    if (this.motionEnergy() < 0.1) {
-      this.resetFSM()
-      return null
-    }
+    const n = this.fusedBuffer.length
 
-    const n = this.filteredBuffer.length
-
-    const prev = this.filteredBuffer[n - 3]
-    const curr = this.filteredBuffer[n - 2]
-    const next = this.filteredBuffer[n - 1]
+    const prev = this.fusedBuffer[n - 3]
+    const curr = this.fusedBuffer[n - 2]
+    const next = this.fusedBuffer[n - 1]
     const currTime = this.timeBuffer[n - 2]
+    console.log("value: ", prev, curr, next, this.absPeakThreshold)
+    if (!(curr > prev && curr > next))
+      return null
 
-    const threshold = this.dynamicThreshold()
-    console.log(curr, prev, next, threshold)
-    if (!(curr > prev && curr > next && curr > threshold))
+    if (curr < this.absPeakThreshold)
       return null
 
     const interval = this.lastStepTime === 0
       ? 0
       : currTime - this.lastStepTime
-
     console.log(interval, this.minStepInterval, this.maxStepInterval)
-    // ===== 自动重启逻辑 =====
     if (this.lastStepTime !== 0 &&
         interval > this.maxStepInterval) {
       this.resetFSM()
@@ -135,9 +157,6 @@ export class GaitDetector {
     return null
   }
 
-  // =========================
-  // FSM处理
-  // =========================
   private handleStep(step: StepEvent) {
     const t = step.timestamp
 
@@ -182,9 +201,6 @@ export class GaitDetector {
     this.candidateSteps = 0
   }
 
-  // =========================
-  // 步频计算（滑动窗口）
-  // =========================
   private cleanupRecentSteps(now: number) {
     while (
       this.recentSteps.length > 0 &&
@@ -194,6 +210,7 @@ export class GaitDetector {
     }
   }
 
+  // 步频
   private computeStepFrequency(): number {
     if (this.recentSteps.length < 2) return 0
 
@@ -206,24 +223,20 @@ export class GaitDetector {
     return (this.recentSteps.length - 1) * 1000 / duration
   }
 
-  // =========================
-  // 动态阈值
-  // =========================
-  private dynamicThreshold(): number {
-    const n = this.filteredBuffer.length
-    const window = Math.min(100, n)
+  // 能量
+  private motionEnergy(): number {
+    const n = this.fusedBuffer.length
+    const window = Math.min(50, n)
 
     let sum = 0
     for (let i = n - window; i < n; i++) {
-      sum += this.filteredBuffer[i] ** 2
+      sum += Math.abs(this.fusedBuffer[i])
     }
 
-    return Math.sqrt(sum / window) * 0.6
+    return sum / window
   }
 
-  // =========================
   // 带通滤波
-  // =========================
   private bandpass(x: number): number {
     const dt = 1 / this.sampleRate
 
@@ -246,15 +259,5 @@ export class GaitDetector {
   private pushBuffer(arr: number[], value: number) {
     arr.push(value)
     if (arr.length > this.bufferSize) arr.shift()
-  }
-
-  private motionEnergy(): number {
-    const n = this.filteredBuffer.length
-    const window = Math.min(50, n)
-    let sum = 0
-    for (let i = n - window; i < n; i++) {
-      sum += Math.abs(this.filteredBuffer[i])
-    }
-    return sum / window
   }
 }
