@@ -13,15 +13,16 @@
     <text>Gravity X: {{gravityX}}</text>
     <text>Gravity Y: {{gravityY}}</text>
     <text>Gravity Z: {{gravityZ}}</text>
-    <text>时间戳: {{timestamp}}</text>
-    <text>时间: {{timeString}}</text>
-    <text>步数: {{stepCount}}</text>
-    <text>步频(Hz): {{stepFreq}}</text>
+    <text>时间戳: {{timestamp}} 时间: {{timeString}}</text>
+    <text>步数: {{stepCount}} 步频(Hz): {{stepFreq}}</text>
+    <text>Heading: {{headingDeg}}° YawRate: {{yawRate}}</text>
+    <text>Turn: {{turnDirection}} {{turnAngle}}°</text>
   </view>
 
   <!-- Canvas 显示重力箭头 -->
   <view class="canvas-container">
     <canvas id="gravityCanvas" canvas-id="gravityCanvas" type="2d" style="width:300px;height:300px;background:#111;border:1px solid #0f0;"></canvas>
+    <canvas id="headingCanvas" canvas-id="headingCanvas" type="2d" style="width:300px;height:300px;background:#111;border:1px solid #0f0;"></canvas>
   </view>
 
   <button bindtap="toggle">
