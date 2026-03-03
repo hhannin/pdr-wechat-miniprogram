@@ -53,9 +53,6 @@ Page({
     })
 
     this.flow?.addProcessor(sample => {
-
-      const timeString = formatTimestamp(sample.timestamp)
-    
       const g = this.gravityEstimator!.update(sample)
     
       const heading = this.headingEstimator!.update(sample, g)
@@ -84,7 +81,7 @@ Page({
         turnAngle: turnEvent?.angleDeg ?? 0,
     
         timestamp: sample.timestamp,
-        timeString: timeString,
+        timeString: formatTimestamp(sample.timestamp),
       })
       if (this.gravityCtx) {
         drawGravity3D(this.gravityCtx, g, 300)
@@ -96,7 +93,6 @@ Page({
   },
 
   onReady() {
-
     // ===== gravity canvas =====
     const gravityQuery = wx.createSelectorQuery()
     gravityQuery
