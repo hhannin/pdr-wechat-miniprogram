@@ -174,9 +174,9 @@ export class GravityEstimator {
       v1.x*v2.x + v1.y*v2.y + v1.z*v2.z
 
     const cross = {
-      x: v1.y*v2.z - v1.z*v2.y,
-      y: v1.z*v2.x - v1.x*v2.z,
-      z: v1.x*v2.y - v1.y*v2.x
+      x: v2.y*v1.z - v2.z*v1.y,
+      y: v2.z*v1.x - v2.x*v1.z,
+      z: v2.x*v1.y - v2.y*v1.x
     }
 
     const q = {

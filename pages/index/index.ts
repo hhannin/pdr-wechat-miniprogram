@@ -84,10 +84,6 @@ Page({
       if (this.calibrator!.isCalibrated()) {
         console.log("index: porcess ...: ", formatTimestamp(sample.timestamp))
 
-        // 3️⃣ 重力更新
-        const g = this.gravityEstimator!.update(sample)
-        console.log("index: gravity: ", g)
-
         const correctedGyro =
           this.calibrator!.getCorrectedGyro(sample.gyro)
         const correctSample: MotionSample = {
@@ -95,6 +91,10 @@ Page({
           gyro: correctedGyro
         }
         console.log("index: correct gyro: ", sample.gyro, correctSample.gyro)
+
+        // 3️⃣ 重力更新
+        const g = this.gravityEstimator!.update(correctSample)
+        console.log("index: gravity: ", g)
 
         const heading =
           this.headingEstimator!.update(correctSample, g)
