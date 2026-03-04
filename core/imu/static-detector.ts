@@ -36,8 +36,10 @@ export class StaticDetector {
   }
 
   isStatic(): boolean {
-    if (this.accelBuffer.length < this.windowSize)
+    if (this.accelBuffer.length < this.windowSize){
+      console.log("static-detector: return this.accelBuffer.length:", this.accelBuffer.length, this.windowSize)
       return false
+    }
 
     const accelMean = this.mean(this.accelBuffer)
     const accelStd  = this.std(this.accelBuffer)
@@ -50,7 +52,15 @@ export class StaticDetector {
     const gyroSmall = gyroMean < this.gyroThreshold
     const gyroStable     = gyroStd < this.gyroStdThreshold
 
-    console.log("static-detector: ", Math.abs(accelMean - 1), this.accelThreshold, gyroMean, this.gyroThreshold, accelCloseTo1G, gyroSmall)
+    console.log(
+      "static-detector: ",
+      "accel:", Math.abs(accelMean - 1), this.accelThreshold, accelStd, this.accelStdThreshold,
+      "gyro", gyroMean, this.gyroThreshold, gyroStd, this.gyroStdThreshold,
+      "accelCloseTo1G=", accelCloseTo1G, 
+      "accelStable=", accelStable,
+      "gyroSmall=", gyroSmall,
+      "gyroStable=", gyroStable,
+    )
     return accelCloseTo1G && accelStable && gyroSmall && gyroStable
   }
 

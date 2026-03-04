@@ -38,12 +38,15 @@ export class TurnDetector {
     this.lastStepHeading = heading.headingRad
 
     const absDelta = Math.abs(delta)
+    console.log("turn-detector: ", heading.headingRad, this.lastStepHeading, delta)
 
     // 1️⃣ 忽略小抖动
     if (absDelta < this.minTurnAngleRad) {
+      console.log("turn-detector: return: ", absDelta, this.minTurnAngleRad)
       return null
     }
 
+    console.log("turn-detector: uturn: ", absDelta, this.uTurnMinRad, this.uTurnMaxRad)
     // 2️⃣ 掉头检测
     if (absDelta >= this.uTurnMinRad && absDelta <= this.uTurnMaxRad) {
       return {

@@ -57,48 +57,71 @@ Page({
     })
 
     this.flow?.addProcessor(sample => {
-      const g = this.gravityEstimator!.update(sample)
-    
-      this.gaitDetector?.pushSample(sample, g)
-    
+      // UI显示原始数据
       this.setData({
         ax: sample.accel.x,
         ay: sample.accel.y,
         az: sample.accel.z,
-    
         gx: sample.gyro.x,
         gy: sample.gyro.y,
         gz: sample.gyro.z,
-    
-        gravityX: g.gravity.x,
-        gravityY: g.gravity.y,
-        gravityZ: g.gravity.z,
-        
         timestamp: sample.timestamp,
         timeString: formatTimestamp(sample.timestamp),
       })
-      if (this.gravityCtx) {
-        drawGravity3D(this.gravityCtx, g, 300)
-      }
 
+      // 1️⃣ 先做校准（静止阶段）
       this.calibrator!.update(sample.accel, sample.gyro)
-      if(this.calibrator!.isCalibrated()){
-        const correctedGyro = this.calibrator!.getCorrectedGyro(sample.gyro)
+    
+      // 2️⃣ 如果刚完成校准，初始化重力
+      if (
+        this.calibrator!.isCalibrated() &&
+        !this.gravityEstimator!.isInitialized()
+      ) {
+        const initG = this.calibrator!.getInitialGravity()
+        this.gravityEstimator!.initializeFromGravity(initG)
+      }
+      // 4️⃣ 只有校准完成才做姿态估计
+      if (this.calibrator!.isCalibrated()) {
+        console.log("index: porcess ...: ", formatTimestamp(sample.timestamp))
+
+        // 3️⃣ 重力更新
+        const g = this.gravityEstimator!.update(sample)
+        console.log("index: gravity: ", g)
+
+        const correctedGyro =
+          this.calibrator!.getCorrectedGyro(sample.gyro)
         const correctSample: MotionSample = {
-          ...sample,  // 复制所有属性
-          gyro: correctedGyro  // 用新值覆盖 gyro
+          ...sample,
+          gyro: correctedGyro
         }
-        const heading = this.headingEstimator!.update(correctSample, g)
-        const turnEvent = this.turnDetector!.update(heading)
+        console.log("index: correct gyro: ", sample.gyro, correctSample.gyro)
+
+        const heading =
+          this.headingEstimator!.update(correctSample, g)
+        const turnEvent =
+          this.turnDetector!.update(heading)
+        console.log("index: yawRate: ", heading.yawRate, " heading: ", heading.headingDeg)
+        console.log("index turn: ", turnEvent?.direction, turnEvent?.angleDeg)
+
         this.setData({
+          gravityX: g.gravity.x,
+          gravityY: g.gravity.y,
+          gravityZ: g.gravity.z,
+  
           headingDeg: heading.headingDeg,
           yawRate: heading.yawRate,
           turnDirection: turnEvent?.direction ?? '',
-          turnAngle: turnEvent?.angleDeg ?? 0,  
+          turnAngle: turnEvent?.angleDeg ?? 0,
         })
+        if (this.gravityCtx) {
+          drawGravity3D(this.gravityCtx, g, 300)
+        }
         if (this.headingCtx) {
           drawHeadingCompass(this.headingCtx, heading, 300)
         }
+    
+        // 5️⃣ 步态检测放在姿态之后
+        this.gaitDetector?.pushSample(correctSample, g)
       }
     })
   },

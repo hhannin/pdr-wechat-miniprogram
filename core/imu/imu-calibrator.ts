@@ -21,14 +21,17 @@ export class IMUCalibrator {
 
     this.staticDetector.update(accel, gyro)
 
-    if (!this.staticDetector.isStatic())
+    if (!this.staticDetector.isStatic()){
+      console.log("imu-calibrator: return not static")
       return
+    }
 
     this.gyroSamples.push(gyro)
     this.accelSamples.push(accel)
-
     if (this.gyroSamples.length >= this.calibrationSampleCount) {
       this.performCalibration()
+    }else{
+      console.log("imu-calibrator: return this.gyroSamples.length:", this.gyroSamples.length, this.calibrationSampleCount)
     }
   }
 
