@@ -82,7 +82,7 @@ Page({
       }
       // 4️⃣ 只有校准完成才做姿态估计
       if (this.calibrator!.isCalibrated()) {
-        console.log("index: porcess ...: ", formatTimestamp(sample.timestamp))
+        //console.log("index: porcess ...: ", formatTimestamp(sample.timestamp))
 
         const correctedGyro =
           this.calibrator!.getCorrectedGyro(sample.gyro)
@@ -90,18 +90,18 @@ Page({
           ...sample,
           gyro: correctedGyro
         }
-        console.log("index: correct gyro: ", sample.gyro, correctSample.gyro)
+        //console.log("index: correct gyro: ", sample.gyro, correctSample.gyro)
 
         // 3️⃣ 重力更新
         const g = this.gravityEstimator!.update(correctSample)
-        console.log("index: gravity: ", g)
+        //console.log("index: gravity: ", g)
 
         const heading =
           this.headingEstimator!.update(correctSample, g)
         const turnEvent =
           this.turnDetector!.update(heading)
-        console.log("index: yawRate: ", heading.yawRate, " heading: ", heading.headingDeg)
-        console.log("index turn: ", turnEvent?.direction, turnEvent?.angleDeg)
+        //console.log("index: yawRate: ", heading.yawRate, " heading: ", heading.headingDeg)
+        //console.log("index turn: ", turnEvent?.direction, turnEvent?.angleDeg)
 
         this.setData({
           gravityX: g.gravity.x,

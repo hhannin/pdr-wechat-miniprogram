@@ -9,56 +9,76 @@ interface Quaternion {
 }
 
 interface GravityOptions {
-  accelCorrectionGain?: number
+  kp?: number
+  ki?: number
 }
 
 export class GravityEstimator {
 
   private q: Quaternion = { w: 1, x: 0, y: 0, z: 0 }
+  private gyroBias: Vector3 = { x: 0, y: 0, z: 0 }
+
   private lastTimestamp = 0
-
   private initialized = false
-  private locked = true   // 🔒 初始化锁
 
-  private readonly accelCorrectionGain: number
+  private readonly kp: number
+  private readonly ki: number
 
   constructor(options: GravityOptions = {}) {
-    this.accelCorrectionGain = options.accelCorrectionGain ?? 0.02
+    this.kp = options.kp ?? 0.02
+    this.ki = options.ki ?? 0.0005
   }
 
   // =============================
-  // 🔥 初始化入口（由校准模块调用）
+  // 初始化（静止时调用）
   // =============================
   initializeFromGravity(initialGravity: Vector3) {
 
-    const worldUp = { x: 0, y: 0, z: 1 }
-
-    this.q = this.quaternionFromTwoVectors(
-      worldUp,
-      initialGravity
+    const norm = Math.sqrt(
+      initialGravity.x**2 +
+      initialGravity.y**2 +
+      initialGravity.z**2
     )
 
+    if (norm < 1e-6) return
+
+    const gNorm = {
+      x: initialGravity.x / norm,
+      y: initialGravity.y / norm,
+      z: initialGravity.z / norm
+    }
+
+    // 世界坐标中“重力方向”定义为 (0,0,-1)
+    const worldGravity = { x: 0, y: 0, z: 1 }
+
+    this.q = this.quaternionFromTwoVectors(
+      worldGravity,
+      gNorm
+    )
+
+    this.gyroBias = { x: 0, y: 0, z: 0 }
     this.initialized = true
-    this.locked = false
     this.lastTimestamp = 0
-    console.log("gravity-estimator: initializeFromGravity: ", initialGravity, this.q)
-    console.log('GravityEstimator initialized')
+
+    const testG = this.getGravityDirection()
+    console.log("test: ", testG)
+
   }
 
-  isInitialized(): boolean {
+  isInitialized() {
     return this.initialized
   }
 
   // =============================
-  // 主更新入口
+  // 主更新
   // =============================
   update(sample: MotionSample): GravitySample {
 
-    if (!this.initialized || this.locked) {
+    if (!this.initialized) {
       return this.buildOutput(sample.timestamp)
     }
 
-    const { gyro, accel, timestamp } = sample
+    const { accel, gyro, timestamp } = sample
 
     if (!this.lastTimestamp) {
       this.lastTimestamp = timestamp
@@ -68,47 +88,48 @@ export class GravityEstimator {
     const dt = (timestamp - this.lastTimestamp) / 1000
     this.lastTimestamp = timestamp
 
-    // 1️⃣ Mahony结构
-    const correctedGyro = this.applyAccelCorrection(gyro, accel)
+    // 1️⃣ 计算重力方向预测
+    const gPred = this.getGravityDirection()
 
-    // 2️⃣ 积分
-    this.integrateGyro(correctedGyro, dt)
-
-    return this.buildOutput(timestamp)
-  }
-
-  // =============================
-  // Mahony修正
-  // =============================
-  private applyAccelCorrection(
-    gyro: Vector3,
-    accel: Vector3
-  ): Vector3 {
-
-    const norm = Math.sqrt(
+    // 2️⃣ accel 归一化
+    const accNormVal = Math.sqrt(
       accel.x**2 + accel.y**2 + accel.z**2
     )
 
-    if (norm < 0.5) return gyro
+    let error = { x: 0, y: 0, z: 0 }
 
-    const ax = accel.x / norm
-    const ay = accel.y / norm
-    const az = accel.z / norm
+    if (accNormVal > 0.5) {
 
-    const g = this.getGravityDirection()
+      const aNorm = {
+        x: accel.x / accNormVal,
+        y: accel.y / accNormVal,
+        z: accel.z / accNormVal
+      }
 
-    // 🔥 正确顺序：g × accel
-    const ex = g.y * az - g.z * ay
-    const ey = g.z * ax - g.x * az
-    const ez = g.x * ay - g.y * ax
+      // 误差 = gPred × aNorm   (标准 Mahony)
+      error = {
+        x: gPred.y * aNorm.z - gPred.z * aNorm.y,
+        y: gPred.z * aNorm.x - gPred.x * aNorm.z,
+        z: gPred.x * aNorm.y - gPred.y * aNorm.x
+      }
 
-    const k = this.accelCorrectionGain
-
-    return {
-      x: gyro.x + k * ex,
-      y: gyro.y + k * ey,
-      z: gyro.z + k * ez
+      // 3️⃣ 更新 gyro bias (积分项)
+      this.gyroBias.x += this.ki * error.x * dt
+      this.gyroBias.y += this.ki * error.y * dt
+      this.gyroBias.z += this.ki * error.z * dt
     }
+
+    // 4️⃣ 修正 gyro
+    const correctedGyro = {
+      x: gyro.x - this.gyroBias.x + this.kp * error.x,
+      y: gyro.y - this.gyroBias.y + this.kp * error.y,
+      z: gyro.z - this.gyroBias.z + this.kp * error.z
+    }
+
+    // 5️⃣ 四元数积分
+    this.integrateGyro(correctedGyro, dt)
+
+    return this.buildOutput(timestamp)
   }
 
   // =============================
@@ -118,7 +139,6 @@ export class GravityEstimator {
 
     const { x: gx, y: gy, z: gz } = gyro
     const q = this.q
-
     const halfDt = 0.5 * dt
 
     const qw = q.w + (-q.x * gx - q.y * gy - q.z * gz) * halfDt
@@ -148,22 +168,22 @@ export class GravityEstimator {
   // =============================
   private buildOutput(timestamp: number): GravitySample {
 
-    const gDir = this.getGravityDirection()
+    const gUnit = this.getGravityDirection()
 
     return {
       timestamp,
       gravity: {
-        x: gDir.x * 9.81,
-        y: gDir.y * 9.81,
-        z: gDir.z * 9.81
+        x: gUnit.x * 9.81,
+        y: gUnit.y * 9.81,
+        z: gUnit.z * 9.81
       },
       gNormal: 9.81,
-      gUnit: gDir
+      gUnit
     }
   }
 
   // =============================
-  // 工具函数
+  // v1 → v2 四元数（含180°特判）
   // =============================
   private quaternionFromTwoVectors(
     v1: Vector3,
@@ -173,20 +193,41 @@ export class GravityEstimator {
     const dot =
       v1.x*v2.x + v1.y*v2.y + v1.z*v2.z
 
+    // 180° 特判
+    if (dot < -0.9999) {
+
+      let axis = { x: 1, y: 0, z: 0 }
+
+      if (Math.abs(v1.x) > 0.9) {
+        axis = { x: 0, y: 1, z: 0 }
+      }
+
+      const cross = {
+        x: v1.z*axis.y - v1.y*axis.z,
+        y: v1.x*axis.z - v1.z*axis.x,
+        z: v1.y*axis.x - v1.x*axis.y,
+      }
+
+      return this.normalize({
+        w: 0,
+        x: cross.x,
+        y: cross.y,
+        z: cross.z
+      })
+    }
+
     const cross = {
       x: v2.y*v1.z - v2.z*v1.y,
       y: v2.z*v1.x - v2.x*v1.z,
       z: v2.x*v1.y - v2.y*v1.x
     }
 
-    const q = {
+    return this.normalize({
       w: 1 + dot,
       x: cross.x,
       y: cross.y,
       z: cross.z
-    }
-
-    return this.normalize(q)
+    })
   }
 
   private normalize(q: Quaternion): Quaternion {
@@ -205,8 +246,8 @@ export class GravityEstimator {
 
   reset() {
     this.q = { w: 1, x: 0, y: 0, z: 0 }
+    this.gyroBias = { x: 0, y: 0, z: 0 }
     this.lastTimestamp = 0
     this.initialized = false
-    this.locked = true
   }
 }
