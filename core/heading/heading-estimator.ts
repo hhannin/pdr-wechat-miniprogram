@@ -90,4 +90,12 @@ export class HeadingEstimator {
     this.lastTimestamp = 0
     this.driftBias = 0
   }
+
+  getHeading(): number {
+    return this.headingRad
+  }
+  
+  getHeadingDeg(): number {
+    return this.headingRad * 180 / Math.PI
+  }
 }
