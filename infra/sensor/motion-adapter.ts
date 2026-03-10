@@ -65,6 +65,7 @@ export class MotionAdapter {
     this.running = false
     wx.stopAccelerometer()
     wx.stopGyroscope()
+    wx.stopDeviceMotionListening()
     this.latestAccel = undefined
     this.listener = undefined
   }

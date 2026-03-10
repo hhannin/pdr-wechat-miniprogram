@@ -10,6 +10,7 @@ import { TurnDetector } from '../../core/heading/turn-detector'
 import { drawHeadingCompass } from '../../core/heading/heading-visual'
 import { IMUCalibrator } from '../../core/imu/imu-calibrator'
 import { MotionSample } from '../../core/types/sensor'
+import { StepLengthEstimator } from '../../core/step/step-length-estimator'
 
 Page({
   // 页面响应式数据
@@ -19,7 +20,7 @@ Page({
     gx: 0, gy: 0, gz: 0,
     gravityX: 0, gravityY: 0, gravityZ: 0,
     timestamp: 0,timeString: "",
-    stepCount: 0,stepFreq: 0,
+    stepCount: 0,stepFreq: 0,stepsLength: 0,
     headingDeg: 0,yawRate: 0,
     turnDirection: '',turnAngle: 0,
   },
@@ -31,6 +32,7 @@ Page({
   gaitDetector: null as GaitDetector | null,
   headingEstimator: null as HeadingEstimator | null,
   turnDetector: null as TurnDetector | null,
+  stepLengthEstimator: null as StepLengthEstimator | null,
   gravityCanvas: null as any,  // Canvas Node
   gravityCtx: null as any,         // Canvas 2D Context
   headingCanvas: null as any,
@@ -52,26 +54,36 @@ Page({
     this.gravityEstimator = new GravityEstimator()
     this.headingEstimator = new HeadingEstimator()
     this.turnDetector = new TurnDetector()
+    this.stepLengthEstimator = new StepLengthEstimator(1.72)
     // ⭐ gaitDetector listener里处理turn
     this.gaitDetector = new GaitDetector(
-      (stepCount, stepFreq, state, steps) => {
+      (stepCount, stepFreq, state, features) => {
         let turnDirection = ''
         let turnAngle = 0
-        for (const step of steps) {
-          const heading =this.headingEstimator!.getHeading()
+        let stepLength = 0
+        for (const feature of features) {
+          const heading =
+            this.headingEstimator!.getHeading()
           const turn =
-            this.turnDetector!.onStep(heading,step.timestamp)
+            this.turnDetector!.onStep(
+              heading,
+              feature.timestamp
+            )
           if (turn) {
             turnDirection = turn.direction
             turnAngle = turn.angleDeg
           }
+          const step =
+            this.stepLengthEstimator!.update(feature)
+          stepLength =
+            step.smoothedStepLength
         }
         this.setData({
-          stepCount,
-          stepFreq,
-          turnDirection: turnDirection ?? '',
-          turnAngle: turnAngle ?? 0,
-          // gaitState: state,
+          stepCount: stepCount,
+          stepFreq: stepFreq,
+          stepsLength: stepLength,
+          turnDirection: turnDirection,
+          turnAngle: turnAngle,
         })
       }
     )

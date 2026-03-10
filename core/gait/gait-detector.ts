@@ -1,6 +1,7 @@
 import { MotionSample } from '../types/sensor'
 import { StepEvent } from '../types/gait'
 import { GravitySample } from '../types/gravity'
+import { StepFeature } from '../types/steps'
 
 export enum GaitState {
   Idle = 'idle',
@@ -13,7 +14,7 @@ type GaitListener = (
   totalSteps: number,
   stepFreq: number,
   state: GaitState,
-  steps: StepEvent[]
+  features: StepFeature[]
 ) => void
 
 export class GaitDetector {
@@ -93,15 +94,15 @@ export class GaitDetector {
       this.lastMotionTime = t
     }
 
-    const step = this.detectPeakAdaptive()
-    if (!step) return
-
-    this.handleStep(step)
+    const feature = this.detectPeakAdaptive()
+    if (!feature) return
+    
+    this.handleStep(feature.timestamp)
 
     const freq = this.computeStepFrequency()
 
     if (this.listener) {
-      this.listener(this.totalSteps, freq, this.state, [step])
+      this.listener(this.totalSteps, freq, this.state, [feature])
     }
   }
 
@@ -147,60 +148,79 @@ export class GaitDetector {
   // =========================
   // 🔥 自适应峰值检测
   // =========================
-  private detectPeakAdaptive(): StepEvent | null {
+  private detectPeakAdaptive(): StepFeature | null {
 
     const n = this.fusedBuffer.length
     const prev = this.fusedBuffer[n - 3]
     const curr = this.fusedBuffer[n - 2]
     const next = this.fusedBuffer[n - 1]
     const currTime = this.timeBuffer[n - 2]
-
-    // 局部极大
+  
     if (!(curr > prev && curr > next))
       return null
-
-    // 🔥 自适应阈值
+  
     const avgAmp = this.motionEnergy()
+  
     const adaptiveThreshold =
       Math.max(
         this.adaptiveFactor * avgAmp,
         this.minPeakFloor
       )
-
+  
     if (curr < adaptiveThreshold)
       return null
-
-    // 防止微弱抖动
+  
     if (curr < prev * 1.05)
       return null
-
+  
     const interval =
       this.lastStepTime === 0
         ? 0
         : currTime - this.lastStepTime
-
+  
     if (this.lastStepTime !== 0 &&
         interval > this.maxStepInterval) {
       this.resetFSM()
     }
-
-    if (this.lastStepTime === 0 ||
-        interval > this.minStepInterval) {
-      return { timestamp: currTime }
+  
+    if (this.lastStepTime !== 0 &&
+        interval < this.minStepInterval) {
+      return null
     }
-
-    return null
+  
+    // ===== 新增 StepFeature =====
+    const valley =
+      Math.min(prev, next)
+  
+    const amplitude =
+      curr - valley
+  
+    const cadence =
+      interval > 0
+        ? 1000 / interval
+        : 0
+  
+    return {
+      timestamp: currTime,
+      stepInterval: interval / 1000,
+      cadence,
+      accPeak: curr,
+      accValley: valley,
+      accAmplitude: amplitude
+    }
   }
 
   // =========================
   // 状态机
   // =========================
-  private handleStep(step: StepEvent) {
+  private handleStep(timestamp: number) {
 
-    const t = step.timestamp
+    const t = timestamp
     this.lastStepTime = t
     this.totalSteps++
-
+    
+    const step = { timestamp: t }
+    
     this.recentSteps.push(step)
     this.cleanupRecentSteps(t)
 
