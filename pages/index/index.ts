@@ -90,7 +90,7 @@ Page({
       })
 
       // 先做校准（静止阶段）
-      this.calibrator!.update(sample.accel, sample.gyro)
+      this.calibrator!.update(sample.accel, sample.gyro, sample.accUpdated)
     
       // 如果刚完成校准，初始化重力
       if (
@@ -116,11 +116,12 @@ Page({
 
         // 重力更新
         const g = this.gravityEstimator!.update(correctSample)
-        //console.log("index: gravity: ", g)
+        console.log("index: gravity: ", g, formatTimestamp(sample.timestamp))
 
         // heading更新
+        const q = this.gravityEstimator!.getQuaternion()
         const heading =
-          this.headingEstimator!.update(correctSample, g)
+          this.headingEstimator!.update(correctSample, g, q)
         //console.log("index: yawRate: ", heading.yawRate, " heading: ", heading.headingDeg)
 
         this.setData({

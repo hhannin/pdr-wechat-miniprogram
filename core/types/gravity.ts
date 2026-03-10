@@ -6,3 +6,10 @@ export interface GravitySample {
   gNormal: number          // 模长
   gUnit: Vector3           // 单位向量
 }
+
+export interface Quaternion {
+  w: number
+  x: number
+  y: number
+  z: number
+}

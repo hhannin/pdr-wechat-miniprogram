@@ -78,7 +78,7 @@ export class GravityEstimator {
       return this.buildOutput(sample.timestamp)
     }
 
-    const { accel, gyro, timestamp } = sample
+    const { accel, gyro, timestamp, accUpdated } = sample
 
     if (!this.lastTimestamp) {
       this.lastTimestamp = timestamp
@@ -95,28 +95,31 @@ export class GravityEstimator {
     const accNormVal = Math.sqrt(
       accel.x**2 + accel.y**2 + accel.z**2
     )
+    const accTrust = Math.abs(accNormVal - 1.0) < 0.03
 
     let error = { x: 0, y: 0, z: 0 }
-
-    if (accNormVal > 0.5) {
-
+    if (accTrust && accUpdated) {
       const aNorm = {
         x: accel.x / accNormVal,
         y: accel.y / accNormVal,
         z: accel.z / accNormVal
       }
-
       // 误差 = gPred × aNorm   (标准 Mahony)
       error = {
         x: gPred.y * aNorm.z - gPred.z * aNorm.y,
         y: gPred.z * aNorm.x - gPred.x * aNorm.z,
         z: gPred.x * aNorm.y - gPred.y * aNorm.x
       }
-
       // 3️⃣ 更新 gyro bias (积分项)
       this.gyroBias.x += this.ki * error.x * dt
       this.gyroBias.y += this.ki * error.y * dt
       this.gyroBias.z += this.ki * error.z * dt
+    }else{
+      // 动态运动 → 防止 bias windup
+      const decayRate = 0.999 ** dt
+      this.gyroBias.x *= decayRate
+      this.gyroBias.y *= decayRate
+      this.gyroBias.z *= decayRate
     }
 
     // 4️⃣ 修正 gyro
@@ -242,6 +245,10 @@ export class GravityEstimator {
       y: q.y / norm,
       z: q.z / norm
     }
+  }
+
+  getQuaternion() {
+    return this.q
   }
 
   reset() {

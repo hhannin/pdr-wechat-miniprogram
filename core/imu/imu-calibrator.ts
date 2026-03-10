@@ -10,38 +10,74 @@ export class IMUCalibrator {
   private gyroSamples: Vector3[] = []
   private accelSamples: Vector3[] = []
 
-  private readonly calibrationSampleCount = 75
+  private readonly gyroSampleTarget = 75
+  private readonly accelSampleTarget = 10
+
+  private gyroReady = false
+  private gravityReady = false
 
   private calibrated = false
+
   private gyroBias: Vector3 = { x: 0, y: 0, z: 0 }
   private initialGravity: Vector3 = { x: 0, y: 0, z: -1 }
 
-  update(accel: Vector3, gyro: Vector3) {
-    if (this.calibrated) return
+  update(
+    accel: Vector3,
+    gyro: Vector3,
+    accUpdated: boolean
+  ) {
 
-    this.staticDetector.update(accel, gyro)
-
-    if (!this.staticDetector.isStatic()){
-      console.log("imu-calibrator: return not static")
+    if (this.calibrated) {
       return
     }
 
-    this.gyroSamples.push(gyro)
-    this.accelSamples.push(accel)
-    if (this.gyroSamples.length >= this.calibrationSampleCount) {
-      this.performCalibration()
-    }else{
-      console.log("imu-calibrator: return this.gyroSamples.length:", this.gyroSamples.length, this.calibrationSampleCount)
+    this.staticDetector.update(accel, gyro, accUpdated)
+    if (!this.staticDetector.isStatic()) {
+      return
+    }
+
+    // gyro 每帧采样
+    if (!this.gyroReady) {
+      this.gyroSamples.push(gyro)
+    }
+    // accel 只在新数据采样
+    if (!this.gravityReady && accUpdated) {
+      this.accelSamples.push(accel)
+    }
+
+    // 判断 gyro bias
+    if (!this.gyroReady &&
+        this.gyroSamples.length >= this.gyroSampleTarget) {
+      this.computeGyroBias()
+      this.gyroReady = true
+    }
+    // 判断 gravity
+    if (!this.gravityReady &&
+        this.accelSamples.length >= this.accelSampleTarget) {
+      this.computeInitialGravity()
+      this.gravityReady = true
+    }
+    this.calibrated = this.gyroReady && this.gravityReady
+
+    if (this.calibrated) {
+      console.log('IMU calibrated')
+      console.log('gyro bias:', this.gyroBias)
+      console.log('initial gravity:', this.initialGravity)
+
+      this.gyroSamples = []
+      this.accelSamples = []
     }
   }
 
-  private performCalibration() {
+  private computeGyroBias() {
     this.gyroBias = {
       x: this.mean(this.gyroSamples.map(g => g.x)),
       y: this.mean(this.gyroSamples.map(g => g.y)),
       z: this.mean(this.gyroSamples.map(g => g.z)),
     }
+  }
 
+  private computeInitialGravity() {
     const avgAccel = {
       x: this.mean(this.accelSamples.map(a => a.x)),
       y: this.mean(this.accelSamples.map(a => a.y)),
@@ -59,12 +95,6 @@ export class IMUCalibrator {
       y: avgAccel.y / norm,
       z: avgAccel.z / norm,
     }
-
-    this.calibrated = true
-
-    console.log('IMU calibrated')
-    console.log('Gyro bias:', this.gyroBias)
-    console.log('Initial gravity:', this.initialGravity)
   }
 
   getCorrectedGyro(gyro: Vector3): Vector3 {
