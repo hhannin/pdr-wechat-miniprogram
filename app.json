@@ -3,7 +3,7 @@
     "pages/index/index"
   ],
   "window": {
-    "navigationBarTitleText": "PDR Debug",
+    "navigationBarTitleText": "Foots Debug",
     "navigationBarBackgroundColor": "#000000",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#000000"

@@ -1,25 +1,3 @@
 <view class="container">
-  <view class="title">PDR Sensor Debug</view>
-  <view class="status">
-    Status: {{running ? "Running" : "Stopped"}}
-  </view>
-  <view class="data">
-    <text>acc XYZ: {{ax}}, {{ay}}, {{az}}</text>
-    <text>gyro XYZ: {{gx}}, {{gy}}, {{gz}}</text>
-    <text>Gravity XYZ: {{gravityX}}, {{gravityY}}, {{gravityZ}}</text>
-    <text>Time: {{timestamp}} {{timeString}}</text>
-    <text>步数: {{stepCount}} 步频(Hz): {{stepFreq}} 里程: {{stepsLength}}</text>
-    <text>Heading: {{headingDeg}}° YawRate: {{yawRate}} </text>
-    <text>Turn: {{turnDirection}} {{turnAngle}}°</text>
-  </view>
-
-  <!-- Canvas 显示重力箭头 -->
-  <view class="canvas-container">
-    <canvas id="gravityCanvas" canvas-id="gravityCanvas" type="2d" style="width:300px;height:300px;background:#111;border:1px solid #0f0;"></canvas>
-    <canvas id="headingCanvas" canvas-id="headingCanvas" type="2d" style="width:300px;height:300px;background:#111;border:1px solid #0f0;"></canvas>
-  </view>
-
-  <button bindtap="toggle">
-    {{running ? "Stop" : "Start"}}
-  </button>
+  <view class="title">Foots Debug</view>
 </view>

@@ -6,13 +6,3 @@
   font-size: 36rpx;
   margin-bottom: 30rpx;
 }
-.status {
-  margin-bottom: 20rpx;
-}
-.data text {
-  display: block;
-  margin-bottom: 10rpx;
-}
-button {
-  margin-top: 30rpx;
-}
