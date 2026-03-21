@@ -6,11 +6,9 @@ import { requestMotionPermission } from '../../infra/sensor/permission'
 import { formatTimestamp } from '../../utils/format-util'
 import { drawGravity3D } from '../../core/gravity/gravity-visual'
 import { HeadingEstimator } from '../../core/heading/heading-estimator'
-import { TurnDetector } from '../../core/heading/turn-detector'
 import { drawHeadingCompass } from '../../core/heading/heading-visual'
 import { IMUCalibrator } from '../../core/imu/imu-calibrator'
 import { MotionSample } from '../../core/types/sensor'
-import { StepLengthEstimator } from '../../core/step/step-length-estimator'
 
 Page({
   // 页面响应式数据
@@ -22,7 +20,7 @@ Page({
     timestamp: 0,timeString: "",
     stepCount: 0,stepFreq: 0,stepsLength: 0,
     headingDeg: 0,yawRate: 0,
-    turnDirection: '',turnAngle: 0,
+    travelHeading: 0,turnDirection: '',
   },
 
   adapter: null as MotionAdapter | null,
@@ -31,8 +29,6 @@ Page({
   gravityEstimator: null as GravityEstimator | null,
   gaitDetector: null as GaitDetector | null,
   headingEstimator: null as HeadingEstimator | null,
-  turnDetector: null as TurnDetector | null,
-  stepLengthEstimator: null as StepLengthEstimator | null,
   gravityCanvas: null as any,  // Canvas Node
   gravityCtx: null as any,         // Canvas 2D Context
   headingCanvas: null as any,
@@ -53,37 +49,21 @@ Page({
     this.calibrator = new IMUCalibrator()
     this.gravityEstimator = new GravityEstimator()
     this.headingEstimator = new HeadingEstimator()
-    this.turnDetector = new TurnDetector()
-    this.stepLengthEstimator = new StepLengthEstimator(1.72)
     // ⭐ gaitDetector listener里处理turn
     this.gaitDetector = new GaitDetector(
       (stepCount, stepFreq, state, features) => {
-        let turnDirection = ''
-        let turnAngle = 0
         let stepLength = 0
-        for (const feature of features) {
-          const heading =
-            this.headingEstimator!.getHeading()
-          const turn =
-            this.turnDetector!.onStep(
-              heading,
-              feature.timestamp
-            )
-          if (turn) {
-            turnDirection = turn.direction
-            turnAngle = turn.angleDeg
-          }
-          const step =
-            this.stepLengthEstimator!.update(feature)
-          stepLength =
-            step.smoothedStepLength
-        }
+        let travelHeading = 0
+        let turnDirection = ''
+
+        const headingRad = this.headingEstimator!.getHeading()
+
         this.setData({
           stepCount: stepCount,
           stepFreq: stepFreq,
           stepsLength: stepLength,
+          travelHeading: travelHeading,
           turnDirection: turnDirection,
-          turnAngle: turnAngle,
         })
       }
     )
@@ -130,11 +110,14 @@ Page({
         const g = this.gravityEstimator!.update(correctSample)
         console.log("index: gravity: ", g, formatTimestamp(sample.timestamp))
 
-        // heading更新
+        // 手机heading更新
         const q = this.gravityEstimator!.getQuaternion()
         const heading =
           this.headingEstimator!.update(correctSample, g, q)
         //console.log("index: yawRate: ", heading.yawRate, " heading: ", heading.headingDeg)
+
+        // 步态检测 同时回调函数更新 步数、步频、步长、行进heading、turntype
+        this.gaitDetector?.pushSample(correctSample, g)
 
         this.setData({
           gravityX: g.gravity.x,
@@ -144,6 +127,7 @@ Page({
           headingDeg: heading.headingDeg,
           yawRate: heading.yawRate,
         })
+
         if (this.gravityCtx) {
           drawGravity3D(this.gravityCtx, g, 300)
         }
@@ -151,8 +135,6 @@ Page({
           drawHeadingCompass(this.headingCtx, heading, 300)
         }
     
-        // 步态检测
-        this.gaitDetector?.pushSample(correctSample, g)
       }
     })
   },

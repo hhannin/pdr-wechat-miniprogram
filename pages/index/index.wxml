@@ -9,8 +9,8 @@
     <text>Gravity XYZ: {{gravityX}}, {{gravityY}}, {{gravityZ}}</text>
     <text>Time: {{timestamp}} {{timeString}}</text>
     <text>步数: {{stepCount}} 步频(Hz): {{stepFreq}} 里程: {{stepsLength}}</text>
-    <text>Heading: {{headingDeg}}° YawRate: {{yawRate}} </text>
-    <text>Turn: {{turnDirection}} {{turnAngle}}°</text>
+    <text>Heading: {{headingDeg}}° YawRate: {{yawRate}} tHeading: {{travelHeading}}°</text>
+    <text>turnDirection: {{turnDirection}} </text>
   </view>
 
   <!-- Canvas 显示重力箭头 -->
