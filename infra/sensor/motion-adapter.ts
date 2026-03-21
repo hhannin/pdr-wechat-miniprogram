@@ -8,6 +8,7 @@ interface TimedVector3 extends Vector3 {
 
 export class MotionAdapter {
   private latestAccel?: TimedVector3
+  private lastTimestamp = 0
   private listener?: Listener
   private running = false
 
@@ -38,9 +39,18 @@ export class MotionAdapter {
       if (!this.latestAccel) return
 
       const timestamp = Date.now()
+
+      let dt = 0.01
+      if (this.lastTimestamp !== 0) {
+        dt = (timestamp - this.lastTimestamp) / 1000
+      }
+      this.lastTimestamp = timestamp
+      dt = Math.max(0.005, Math.min(dt, 0.05))
+
       const accUpdated = timestamp - this.latestAccel.timestamp < 30
       const motionSample: MotionSample = {
         timestamp,
+        dt,
         accel: {
           x: this.latestAccel.x,
           y: this.latestAccel.y,
