@@ -1,8 +1,267 @@
-.container {
-  padding: 40rpx;
-  font-family: monospace;
+.page-shell {
+  padding: 28rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
 }
-.title {
-  font-size: 36rpx;
-  margin-bottom: 30rpx;
+
+.hero-card,
+.status-card,
+.panel-card {
+  background: rgba(10, 18, 12, 0.92);
+  border: 1px solid rgba(0, 255, 136, 0.35);
+  border-radius: 20rpx;
+  padding: 24rpx;
+  box-shadow: 0 14rpx 36rpx rgba(0, 0, 0, 0.32);
+}
+
+.hero-title,
+.panel-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #d9ffe7;
+}
+
+.hero-subtitle,
+.panel-desc,
+.field-desc,
+.info-subtitle,
+.recent-meta,
+.recent-note-text,
+.code-block {
+  color: rgba(168, 255, 208, 0.78);
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.hero-subtitle,
+.panel-desc {
+  margin-top: 10rpx;
+}
+
+.status-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.status-line {
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.status-busy {
+  color: #8ed7ff;
+}
+
+.status-success {
+  color: #8bffbd;
+}
+
+.status-error {
+  color: #ff9fa4;
+}
+
+.toolbar-row,
+.button-row,
+.action-column {
+  display: flex;
+  gap: 16rpx;
+  flex-wrap: wrap;
+}
+
+.field-group {
+  margin-top: 24rpx;
+}
+
+.field-label {
+  font-size: 26rpx;
+  color: #d9ffe7;
+  margin-bottom: 12rpx;
+  font-weight: 600;
+}
+
+.picker-box,
+.info-box,
+.note-input {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(0, 255, 136, 0.22);
+  border-radius: 16rpx;
+}
+
+.picker-box,
+.info-box {
+  padding: 18rpx 20rpx;
+}
+
+.picker-box {
+  color: #b8ffd5;
+  font-size: 26rpx;
+}
+
+.info-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.info-title,
+.anchor-title,
+.recent-title {
+  font-size: 28rpx;
+  color: #f0fff6;
+  font-weight: 600;
+}
+
+.placeholder-text {
+  color: rgba(168, 255, 208, 0.52);
+}
+
+.info-tag,
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx 12rpx;
+  border-radius: 999rpx;
+  border: 1px solid rgba(0, 255, 136, 0.22);
+  background: rgba(0, 255, 136, 0.08);
+  color: #8bffbd;
+  font-size: 20rpx;
+}
+
+.photo-preview {
+  width: 100%;
+  height: 280rpx;
+  border-radius: 14rpx;
+}
+
+.anchor-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  margin-bottom: 18rpx;
+}
+
+.anchor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.anchor-badges {
+  display: flex;
+  gap: 10rpx;
+  flex-wrap: wrap;
+}
+
+.note-input {
+  width: 100%;
+  min-height: 160rpx;
+  padding: 18rpx 20rpx;
+  box-sizing: border-box;
+  color: #e9fff1;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.primary-button,
+.secondary-button,
+.danger-button {
+  width: 100%;
+}
+
+.primary-button {
+  background: linear-gradient(135deg, #0e5f3f, #157b54);
+  color: #f4fff8;
+}
+
+.secondary-button {
+  background: rgba(255, 255, 255, 0.06);
+  color: #a8ffd0;
+}
+
+.danger-button {
+  background: rgba(120, 22, 28, 0.82);
+  color: #ffe7ea;
+  border-color: rgba(255, 122, 135, 0.4);
+}
+
+.meta-grid {
+  margin-top: 18rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.meta-item {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 14rpx;
+  padding: 14rpx 16rpx;
+  border: 1px solid rgba(0, 255, 136, 0.16);
+}
+
+.meta-label {
+  display: block;
+  font-size: 20rpx;
+  color: rgba(168, 255, 208, 0.72);
+}
+
+.meta-value {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: #eafff1;
+  word-break: break-all;
+}
+
+.empty-state {
+  margin-top: 16rpx;
+  padding: 24rpx 18rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(168, 255, 208, 0.66);
+  font-size: 24rpx;
+}
+
+.recent-card {
+  margin-top: 18rpx;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 18rpx;
+  border: 1px solid rgba(0, 255, 136, 0.14);
+  overflow: hidden;
+}
+
+.recent-card-active {
+  border-color: rgba(0, 255, 136, 0.42);
+  box-shadow: 0 0 0 2rpx rgba(0, 255, 136, 0.14);
+}
+
+.recent-cover {
+  width: 100%;
+  height: 220rpx;
+}
+
+.recent-body {
+  padding: 18rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.recent-subtitle,
+.recent-anchor-text {
+  color: #b8ffd5;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.code-block {
+  margin-top: 16rpx;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: rgba(0, 0, 0, 0.32);
+  border-radius: 16rpx;
+  border: 1px solid rgba(0, 255, 136, 0.16);
+  padding: 18rpx;
 }
