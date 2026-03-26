@@ -124,6 +124,11 @@
           清除照片
         </button>
       </view>
+      <view class="button-row" wx:if="{{isEditMode && !hasPhoto}}">
+        <button size="mini" bindtap="handleCapturePhoto" disabled="{{busy}}">
+          补一张线索照片
+        </button>
+      </view>
     </view>
 
     <view class="field-group" wx:if="{{draftFieldViews.length > 0}}">
@@ -174,19 +179,11 @@
     <view class="action-column" wx:if="{{!isEditMode}}">
       <button
         class="primary-button"
-        bindtap="handleQuickCreate"
+        bindtap="handleCreate"
         loading="{{busy}}"
-        disabled="{{busy || !canQuickCreate}}"
+        disabled="{{busy || !canCreate}}"
       >
-        快速创建（仅场景 + 位置）
-      </button>
-      <button
-        class="secondary-button"
-        bindtap="handleCompleteCreate"
-        loading="{{busy}}"
-        disabled="{{busy || !canCompleteCreate}}"
-      >
-        完整创建（含语义锚点 / 备注 / 照片）
+        创建记录
       </button>
     </view>
 

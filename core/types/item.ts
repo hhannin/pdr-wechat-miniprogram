@@ -30,12 +30,9 @@ export interface Item extends ItemEditableFields {
   readonly photos: readonly PhotoAsset[]
 }
 
-export interface QuickCreateItemInput {
+export interface CreateItemInput {
   readonly sceneType: SceneType
   readonly location: LocationSnapshot
-}
-
-export interface CompleteCreateItemInput extends QuickCreateItemInput {
   readonly anchorValues?: SceneFieldValueMap
   readonly note?: string
   readonly photos?: readonly PhotoAsset[]
@@ -45,6 +42,10 @@ export interface UpdateEditableItemInput {
   readonly sceneType?: SceneType
   readonly anchorValues?: SceneFieldValueMap
   readonly note?: string
+}
+
+export interface AttachPhotoIfAbsentInput {
+  readonly photo: PhotoAsset
 }
 
 export interface ItemSummary {

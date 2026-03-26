@@ -1,9 +1,9 @@
 import type {
-  CompleteCreateItemInput,
+  CreateItemInput,
   Item,
   ItemId,
   ItemSummary,
-  QuickCreateItemInput,
+  PhotoAsset,
   TimestampMs,
   UpdateEditableItemInput,
 } from '../types'
@@ -11,8 +11,9 @@ import type {
   ItemRepository,
   ListRecentItemSummariesOptions,
 } from './item-repository'
-import { createCompleteItem, createQuickItem } from './item-factory'
+import { createItem } from './item-factory'
 import { ItemDomainError } from './item-errors'
+import { attachPhotoIfAbsent } from './item-photo-attacher'
 import { buildItemSummary, type BuildItemSummaryOptions } from './item-summary'
 import { updateEditableItem } from './item-updater'
 import {
@@ -44,8 +45,8 @@ export class ItemService {
     this.defaultRecentLimit = normalizeListLimit(options.defaultRecentLimit)
   }
 
-  async createQuick(input: QuickCreateItemInput): Promise<Item> {
-    const item = createQuickItem(input, {
+  async create(input: CreateItemInput): Promise<Item> {
+    const item = createItem(input, {
       now: this.now,
       idGenerator: this.idGenerator,
     })
@@ -58,18 +59,18 @@ export class ItemService {
     return item
   }
 
-  async createComplete(input: CompleteCreateItemInput): Promise<Item> {
-    const item = createCompleteItem(input, {
+  async attachPhotoIfAbsent(itemId: string, photo: PhotoAsset): Promise<Item> {
+    const currentItem = await this.getByIdOrThrow(itemId)
+    const nextItem = attachPhotoIfAbsent(currentItem, photo, {
       now: this.now,
-      idGenerator: this.idGenerator,
     })
 
     await this.repository.save({
-      item,
-      summary: buildItemSummary(item, this.summaryOptions),
+      item: nextItem,
+      summary: buildItemSummary(nextItem, this.summaryOptions),
     })
 
-    return item
+    return nextItem
   }
 
   async getById(itemId: string): Promise<Item | null> {

@@ -1,8 +1,7 @@
 import type {
-  CompleteCreateItemInput,
+  CreateItemInput,
   Item,
   ItemId,
-  QuickCreateItemInput,
   TimestampMs,
 } from '../types'
 import { ITEM_SCHEMA_VERSION } from '../types'
@@ -26,13 +25,7 @@ interface ItemFactoryDependencies {
 }
 
 function createItemBase(
-  input: {
-    readonly sceneType: string
-    readonly location: QuickCreateItemInput['location']
-    readonly anchorValues?: CompleteCreateItemInput['anchorValues']
-    readonly note?: string
-    readonly photos?: CompleteCreateItemInput['photos']
-  },
+  input: CreateItemInput,
   dependencies: ItemFactoryDependencies = {}
 ): Item {
   assertSceneType(input.sceneType)
@@ -66,15 +59,8 @@ function createItemBase(
   return freezeItem(itemWithTimestamps)
 }
 
-export function createQuickItem(
-  input: QuickCreateItemInput,
-  dependencies: ItemFactoryDependencies = {}
-): Item {
-  return createItemBase(input, dependencies)
-}
-
-export function createCompleteItem(
-  input: CompleteCreateItemInput,
+export function createItem(
+  input: CreateItemInput,
   dependencies: ItemFactoryDependencies = {}
 ): Item {
   return createItemBase(input, dependencies)

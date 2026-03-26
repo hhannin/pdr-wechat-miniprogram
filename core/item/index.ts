@@ -1,5 +1,6 @@
 export * from './item-errors'
 export * from './item-factory'
+export * from './item-photo-attacher'
 export * from './item-repository'
 export * from './item-service'
 export * from './item-summary'

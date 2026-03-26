@@ -1,20 +1,20 @@
 import type {
-  CompleteCreateItemInput,
+  CreateItemInput,
   Item,
   ItemId,
   ItemSummary,
   LocationSelectionSource,
   LocationSnapshot,
   PhotoAsset,
-  QuickCreateItemInput,
   SceneFieldValueMap,
   TimestampMs,
   UpdateEditableItemInput,
 } from '../../core/types'
 import {
+  ItemDomainError,
   ItemService,
   buildItemSummary,
-  createCompleteItem,
+  createItem,
   createDefaultItemId,
   freezeItem,
 } from '../../core/item'
@@ -22,10 +22,7 @@ import { LocalItemRepository, ItemPhotoStore } from '../../infra/storage'
 import { WechatLocationOpener, WechatLocationPicker } from '../../infra/map'
 import { WechatPhotoCapture } from '../../infra/media'
 
-export interface CreateCompleteRecordInput
-  extends Pick<CompleteCreateItemInput, 'sceneType' | 'location' | 'anchorValues' | 'note'> {
-  readonly photos?: readonly PhotoAsset[]
-}
+export type CreateRecordInput = CreateItemInput
 
 export interface DebugRuntimeOptions {
   readonly now?: () => TimestampMs
@@ -68,20 +65,14 @@ export class DebugRuntime {
     return this.itemService.getById(itemId)
   }
 
-  async createQuick(input: QuickCreateItemInput): Promise<Item> {
-    return this.itemService.createQuick(input)
-  }
+  async create(input: CreateRecordInput): Promise<Item> {
+    if (!input.photos || input.photos.length === 0) {
+      return this.itemService.create(input)
+    }
 
-  async createComplete(input: CreateCompleteRecordInput): Promise<Item> {
     const itemId = this.idGenerator()
-    const draftItem = createCompleteItem(
-      {
-        sceneType: input.sceneType,
-        location: input.location,
-        anchorValues: input.anchorValues,
-        note: input.note,
-        photos: input.photos,
-      },
+    const draftItem = createItem(
+      input,
       {
         now: this.now,
         idGenerator: () => itemId,
@@ -113,6 +104,31 @@ export class DebugRuntime {
         } catch {
           // Best effort cleanup for partially persisted photo files.
         }
+      }
+
+      throw error
+    }
+  }
+
+  async attachPhotoIfAbsent(itemId: string, photo: PhotoAsset): Promise<Item> {
+    const currentItem = await this.itemService.getByIdOrThrow(itemId)
+    if (currentItem.photos.length > 0) {
+      throw new ItemDomainError(
+        'photo_already_attached',
+        '该记录已有照片，当前不支持更换。',
+        { itemId: currentItem.id }
+      )
+    }
+
+    const persistedPhoto = this.photoStore.persistPhoto(currentItem.id, photo)
+
+    try {
+      return await this.itemService.attachPhotoIfAbsent(currentItem.id, persistedPhoto)
+    } catch (error) {
+      try {
+        this.photoStore.deleteAll(currentItem.id)
+      } catch {
+        // Best effort cleanup for partially persisted photo files.
       }
 
       throw error

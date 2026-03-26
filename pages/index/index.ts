@@ -78,8 +78,7 @@ interface IndexPageData {
   readonly selectedItemCreatedAt: string
   readonly selectedItemUpdatedAt: string
   readonly selectedItemDebugJson: string
-  readonly canQuickCreate: boolean
-  readonly canCompleteCreate: boolean
+  readonly canCreate: boolean
   readonly canSaveEdit: boolean
 }
 
@@ -98,8 +97,7 @@ interface IndexPageCustom {
   handleOpenLocation(): Promise<void>
   handleCapturePhoto(): Promise<void>
   handleClearDraftPhoto(): void
-  handleQuickCreate(): Promise<void>
-  handleCompleteCreate(): Promise<void>
+  handleCreate(): Promise<void>
   handleSelectRecentItem(event: TapEvent<ItemDataset>): Promise<void>
   handleStartNew(): void
   handleSaveEdit(): Promise<void>
@@ -297,8 +295,8 @@ function buildPhotoPresentation(
       hasPhoto: false,
       photoPath: '',
       photoMeta: isEditMode
-        ? '该记录创建时未附带照片。'
-        : '创建前可反复重拍，创建后照片会固化且不可修改。',
+        ? '该记录当前没有照片，可在编辑阶段补一张；补上后不可再更换。'
+        : '创建前可反复重拍；若创建时未拍，创建后仍可补一张，但补上后不可更换。',
     }
   }
 
@@ -450,6 +448,7 @@ function syncEditorState(
   const isEditMode = page.currentItem !== null
   const activeLocation = getActiveLocation(page)
   const activePhoto = getActivePhoto(page)
+  const hasImmutablePhoto = page.currentItem !== null && page.currentItem.photos.length > 0
   const locationPresentation = buildLocationPresentation(activeLocation)
   const photoPresentation = buildPhotoPresentation(activePhoto, isEditMode)
 
@@ -457,8 +456,10 @@ function syncEditorState(
     isEditMode,
     editorTitle: isEditMode ? '编辑已创建记录' : '创建新记录',
     editorHint: isEditMode
-      ? '位置、创建时间、照片已固化；当前只允许编辑场景字段和备注。'
-      : '先选位置，再决定快速创建或补充完整信息后创建。',
+      ? hasImmutablePhoto
+        ? '位置、创建时间、照片已固化；当前可继续编辑场景字段和备注。'
+        : '位置和创建时间已固化；当前可继续编辑场景字段、备注，并可补一张照片。'
+      : '先选位置，再按需补充语义锚点、备注或照片，然后创建记录。',
     selectedSceneIndex: getSceneIndex(sceneType),
     sceneDescription: getSceneDescription(sceneType),
     draftFieldViews: buildFieldViews(sceneType, anchorValues),
@@ -479,8 +480,7 @@ function syncEditorState(
       ? formatTimestamp(page.currentItem.updatedAt)
       : '',
     selectedItemDebugJson: buildItemDebugJson(page.currentItem),
-    canQuickCreate: !isEditMode && locationPresentation.hasLocation,
-    canCompleteCreate: !isEditMode && locationPresentation.hasLocation,
+    canCreate: !isEditMode && locationPresentation.hasLocation,
     canSaveEdit: isEditMode,
   })
 }
@@ -591,7 +591,7 @@ const initialData: IndexPageData = {
   errorText: '',
   isEditMode: false,
   editorTitle: '创建新记录',
-  editorHint: '先选位置，再决定快速创建或补充完整信息后创建。',
+  editorHint: '先选位置，再按需补充语义锚点、备注或照片，然后创建记录。',
   sceneOptions: SCENE_OPTIONS,
   selectedSceneIndex: getSceneIndex(DEFAULT_SCENE_TYPE),
   sceneDescription: getSceneDescription(DEFAULT_SCENE_TYPE),
@@ -604,14 +604,13 @@ const initialData: IndexPageData = {
   locationSourceText: '',
   hasPhoto: false,
   photoPath: '',
-  photoMeta: '创建前可反复重拍，创建后照片会固化且不可修改。',
+  photoMeta: '创建前可反复重拍；若创建时未拍，创建后仍可补一张，但补上后不可更换。',
   recentItems: [],
   selectedItemId: '',
   selectedItemCreatedAt: '',
   selectedItemUpdatedAt: '',
   selectedItemDebugJson: '',
-  canQuickCreate: false,
-  canCompleteCreate: false,
+  canCreate: false,
   canSaveEdit: false,
 }
 
@@ -736,7 +735,7 @@ Page<IndexPageData, IndexPageCustom>({
       )
 
       setFeedback(this, {
-        statusText: '位置已选择，可以直接快速创建，也可以继续补充信息。',
+        statusText: '位置已选择，可以直接创建，也可以继续补充信息。',
         errorText: '',
       })
     } catch (error) {
@@ -802,10 +801,41 @@ Page<IndexPageData, IndexPageCustom>({
 
   async handleCapturePhoto() {
     if (this.data.isEditMode) {
-      setFeedback(this, {
-        statusText: '',
-        errorText: '照片在创建后不可修改，请先返回新建模式。',
-      })
+      if (!this.currentItem) {
+        setFeedback(this, {
+          statusText: '',
+          errorText: '当前没有可补充照片的记录。',
+        })
+        return
+      }
+
+      if (this.currentItem.photos.length > 0) {
+        setFeedback(this, {
+          statusText: '',
+          errorText: '该记录已有照片，当前不支持更换照片。',
+        })
+        return
+      }
+
+      clearFeedback(this)
+
+      try {
+        const updatedItem = await runBusy(this, '正在补充线索照片', async () => {
+          const photo = await this.runtime.capturePhoto()
+          return this.runtime.attachPhotoIfAbsent(this.currentItem?.id ?? '', photo)
+        })
+
+        enterEditMode(this, updatedItem)
+        await refreshRecent(this, updatedItem.id)
+
+        setFeedback(this, {
+          statusText: '照片已补充并固化到本地存储。',
+          errorText: '',
+        })
+      } catch (error) {
+        await handleAsyncError(this, error, '补充照片失败：')
+      }
+
       return
     }
 
@@ -852,7 +882,7 @@ Page<IndexPageData, IndexPageCustom>({
     })
   },
 
-  async handleQuickCreate() {
+  async handleCreate() {
     if (this.data.isEditMode) {
       setFeedback(this, {
         statusText: '',
@@ -864,7 +894,7 @@ Page<IndexPageData, IndexPageCustom>({
     if (!this.draftLocation) {
       setFeedback(this, {
         statusText: '',
-        errorText: '快速创建前必须先选位置。',
+        errorText: '创建前必须先选位置。',
       })
       return
     }
@@ -872,47 +902,8 @@ Page<IndexPageData, IndexPageCustom>({
     clearFeedback(this)
 
     try {
-      const createdItem = await runBusy(this, '正在快速创建记录', async () =>
-        this.runtime.createQuick({
-          sceneType: getSelectedSceneType(this),
-          location: this.draftLocation as LocationSnapshot,
-        })
-      )
-
-      enterEditMode(this, createdItem)
-      await refreshRecent(this, createdItem.id)
-
-      setFeedback(this, {
-        statusText: '快速创建成功。现在可以继续补充可编辑字段。',
-        errorText: '',
-      })
-    } catch (error) {
-      await handleAsyncError(this, error, '快速创建失败：')
-    }
-  },
-
-  async handleCompleteCreate() {
-    if (this.data.isEditMode) {
-      setFeedback(this, {
-        statusText: '',
-        errorText: '当前处于编辑模式，请先返回新建模式。',
-      })
-      return
-    }
-
-    if (!this.draftLocation) {
-      setFeedback(this, {
-        statusText: '',
-        errorText: '完整创建前必须先选位置。',
-      })
-      return
-    }
-
-    clearFeedback(this)
-
-    try {
-      const createdItem = await runBusy(this, '正在完整创建记录', async () =>
-        this.runtime.createComplete({
+      const createdItem = await runBusy(this, '正在创建记录', async () =>
+        this.runtime.create({
           sceneType: getSelectedSceneType(this),
           location: this.draftLocation as LocationSnapshot,
           anchorValues: extractAnchorValues(this.data.draftFieldViews),
@@ -925,11 +916,14 @@ Page<IndexPageData, IndexPageCustom>({
       await refreshRecent(this, createdItem.id)
 
       setFeedback(this, {
-        statusText: '完整创建成功，位置和照片已固化到本地存储。',
+        statusText:
+          createdItem.photos.length > 0
+            ? '记录创建成功，位置和照片已固化到本地存储。'
+            : '记录创建成功；位置已固化，后续仍可编辑文字字段，且可补一张照片。',
         errorText: '',
       })
     } catch (error) {
-      await handleAsyncError(this, error, '完整创建失败：')
+      await handleAsyncError(this, error, '创建失败：')
     }
   },
 

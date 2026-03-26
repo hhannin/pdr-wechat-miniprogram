@@ -7,6 +7,7 @@ export const ITEM_ERROR_CODES = [
   'invalid_timestamp',
   'invalid_note',
   'invalid_photo',
+  'photo_already_attached',
   'photo_limit_exceeded',
   'invalid_list_limit',
 ] as const
