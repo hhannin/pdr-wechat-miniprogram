@@ -83,7 +83,8 @@
 
 .picker-box,
 .info-box,
-.note-input {
+.note-input,
+.field-input {
   background: rgba(0, 0, 0, 0.28);
   border: 1px solid rgba(0, 255, 136, 0.22);
   border-radius: 16rpx;
@@ -163,6 +164,39 @@
   color: #e9fff1;
   font-size: 26rpx;
   line-height: 1.6;
+}
+
+.field-input {
+  width: 100%;
+  height: 84rpx;
+  padding: 0 20rpx;
+  box-sizing: border-box;
+  color: #e9fff1;
+  font-size: 26rpx;
+}
+
+.suggestion-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.suggestion-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  border: 1px solid rgba(0, 255, 136, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  color: #b8ffd5;
+  font-size: 22rpx;
+  line-height: 1.3;
+}
+
+.suggestion-chip-active {
+  border-color: rgba(0, 255, 136, 0.42);
+  background: rgba(0, 255, 136, 0.12);
+  color: #f1fff7;
 }
 
 .primary-button,

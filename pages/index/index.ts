@@ -3,6 +3,7 @@ import type {
   ItemSummary,
   LocationSnapshot,
   PhotoAsset,
+  SceneFieldControl,
   SceneFieldKey,
   SceneFieldValueMap,
   SceneType,
@@ -22,9 +23,10 @@ interface DebugSceneOption {
   readonly description: string
 }
 
-interface DebugSelectOption {
+interface DebugSuggestionView {
   readonly value: string
   readonly label: string
+  readonly isActive: boolean
 }
 
 interface DebugFieldView {
@@ -33,10 +35,12 @@ interface DebugFieldView {
   readonly description: string
   readonly required: boolean
   readonly primary: boolean
-  readonly selectedIndex: number
-  readonly selectedLabel: string
+  readonly control: SceneFieldControl
+  readonly value: string
   readonly isEmpty: boolean
-  readonly options: readonly DebugSelectOption[]
+  readonly placeholder: string
+  readonly maxLength: number
+  readonly suggestions: readonly DebugSuggestionView[]
 }
 
 interface DebugRecentItemView {
@@ -90,7 +94,8 @@ interface IndexPageCustom {
   onLoad(): Promise<void>
   handleRefreshTap(): Promise<void>
   handleSceneChange(event: PickerChangeEvent): void
-  handleFieldChange(event: PickerChangeEvent<FieldDataset>): void
+  handleFieldInput(event: InputEvent<FieldDataset>): void
+  handleFieldSuggestionTap(event: TapEvent<FieldSuggestionDataset>): void
   handleNoteInput(event: InputEvent): void
   handlePickCurrentLocation(): Promise<void>
   handlePickManualLocation(): Promise<void>
@@ -119,9 +124,15 @@ type PickerChangeEvent<
   Dataset
 >
 
-type InputEvent = WechatMiniprogram.CustomEvent<{
-  readonly value: string
-}>
+type InputEvent<
+  Dataset extends WechatMiniprogram.IAnyObject = WechatMiniprogram.IAnyObject,
+> = WechatMiniprogram.CustomEvent<
+  {
+    readonly value: string
+  },
+  WechatMiniprogram.IAnyObject,
+  Dataset
+>
 
 type TapEvent<
   Dataset extends WechatMiniprogram.IAnyObject = WechatMiniprogram.IAnyObject,
@@ -129,6 +140,10 @@ type TapEvent<
 
 interface FieldDataset extends WechatMiniprogram.IAnyObject {
   readonly fieldKey: SceneFieldKey
+}
+
+interface FieldSuggestionDataset extends FieldDataset {
+  readonly suggestionValue: string
 }
 
 interface ItemDataset extends WechatMiniprogram.IAnyObject {
@@ -144,10 +159,7 @@ const SCENE_OPTIONS: readonly DebugSceneOption[] = listSceneDefinitions().map(
 )
 
 const DEFAULT_SCENE_TYPE: SceneType = SCENE_OPTIONS[0]?.value ?? 'default'
-const EMPTY_SELECT_OPTION: DebugSelectOption = {
-  value: '',
-  label: '未选择',
-}
+const DEFAULT_FIELD_MAX_LENGTH = 40
 
 function formatTimestamp(timestampMs: number): string {
   const date = new Date(timestampMs)
@@ -215,21 +227,7 @@ function buildFieldViews(
   anchorValues: SceneFieldValueMap
 ): readonly DebugFieldView[] {
   return getSceneFieldDefinitions(sceneType).map((fieldDefinition) => {
-    const options = [
-      EMPTY_SELECT_OPTION,
-      ...fieldDefinition.options.map((option) => ({
-        value: option.value,
-        label: option.label,
-      })),
-    ]
-    const currentValue = anchorValues[fieldDefinition.key]
-    const selectedIndex = currentValue
-      ? Math.max(
-          0,
-          options.findIndex((option) => option.value === currentValue)
-        )
-      : 0
-    const selectedOption = options[selectedIndex] ?? EMPTY_SELECT_OPTION
+    const currentValue = anchorValues[fieldDefinition.key] ?? ''
 
     return {
       key: fieldDefinition.key,
@@ -237,10 +235,20 @@ function buildFieldViews(
       description: fieldDefinition.description ?? '',
       required: fieldDefinition.required,
       primary: fieldDefinition.primary,
-      selectedIndex,
-      selectedLabel: selectedOption.label,
-      isEmpty: selectedIndex === 0,
-      options,
+      control: fieldDefinition.control,
+      value: currentValue,
+      isEmpty: currentValue.length === 0,
+      placeholder:
+        fieldDefinition.placeholder ??
+        (fieldDefinition.control === 'hybrid'
+          ? `可输入或点选${fieldDefinition.label}`
+          : `请输入${fieldDefinition.label}`),
+      maxLength: fieldDefinition.maxLength ?? DEFAULT_FIELD_MAX_LENGTH,
+      suggestions: fieldDefinition.options.map((option) => ({
+        value: option.value,
+        label: option.label,
+        isActive: currentValue === option.value,
+      })),
     }
   })
 }
@@ -249,13 +257,35 @@ function extractAnchorValues(fieldViews: readonly DebugFieldView[]): SceneFieldV
   const values: SceneFieldValueMap = {}
 
   for (const fieldView of fieldViews) {
-    const selectedOption = fieldView.options[fieldView.selectedIndex]
-    if (selectedOption && selectedOption.value) {
-      values[fieldView.key] = selectedOption.value
+    const normalizedValue = trimOptionalString(fieldView.value)
+    if (normalizedValue) {
+      values[fieldView.key] = normalizedValue
     }
   }
 
   return values
+}
+
+function updateFieldViewsByKey(
+  fieldViews: readonly DebugFieldView[],
+  fieldKey: SceneFieldKey,
+  nextValue: string
+): readonly DebugFieldView[] {
+  return fieldViews.map((fieldView) => {
+    if (fieldView.key !== fieldKey) {
+      return fieldView
+    }
+
+    return {
+      ...fieldView,
+      value: nextValue,
+      isEmpty: trimOptionalString(nextValue) === undefined,
+      suggestions: fieldView.suggestions.map((suggestion) => ({
+        ...suggestion,
+        isActive: suggestion.value === nextValue,
+      })),
+    }
+  })
 }
 
 function buildLocationPresentation(location: LocationSnapshot | undefined): {
@@ -457,8 +487,8 @@ function syncEditorState(
     editorTitle: isEditMode ? '编辑已创建记录' : '创建新记录',
     editorHint: isEditMode
       ? hasImmutablePhoto
-        ? '位置、创建时间、照片已固化；当前可继续编辑场景字段和备注。'
-        : '位置和创建时间已固化；当前可继续编辑场景字段、备注，并可补一张照片。'
+        ? '场景、位置、创建时间、照片已固化；当前可继续编辑场景线索字段和备注。'
+        : '场景、位置和创建时间已固化；当前可继续编辑场景线索字段、备注，并可补一张照片。'
       : '先选位置，再按需补充语义锚点、备注或照片，然后创建记录。',
     selectedSceneIndex: getSceneIndex(sceneType),
     sceneDescription: getSceneDescription(sceneType),
@@ -678,25 +708,39 @@ Page<IndexPageData, IndexPageCustom>({
     syncEditorState(this, nextSceneType, nextAnchorValues, this.data.noteValue)
   },
 
-  handleFieldChange(event) {
+  handleFieldInput(event) {
     const fieldKey = event.currentTarget.dataset.fieldKey
-    const nextIndex = normalizePickerIndex(event.detail.value, 999)
-    const nextFieldViews = this.data.draftFieldViews.map((fieldView) => {
-      if (fieldView.key !== fieldKey) {
-        return fieldView
-      }
+    if (!fieldKey) {
+      return
+    }
 
-      const selectedOption = fieldView.options[nextIndex] ?? fieldView.options[0]
-      const selectedIndex =
-        nextIndex >= 0 && nextIndex < fieldView.options.length ? nextIndex : 0
+    const nextFieldViews = updateFieldViewsByKey(
+      this.data.draftFieldViews,
+      fieldKey,
+      event.detail.value
+    )
 
-      return {
-        ...fieldView,
-        selectedIndex,
-        selectedLabel: selectedOption.label,
-        isEmpty: selectedIndex === 0,
-      }
+    this.setData({
+      draftFieldViews: nextFieldViews,
     })
+  },
+
+  handleFieldSuggestionTap(event) {
+    if (this.data.busy) {
+      return
+    }
+
+    const fieldKey = event.currentTarget.dataset.fieldKey
+    const suggestionValue = event.currentTarget.dataset.suggestionValue
+    if (!fieldKey || typeof suggestionValue !== 'string') {
+      return
+    }
+
+    const nextFieldViews = updateFieldViewsByKey(
+      this.data.draftFieldViews,
+      fieldKey,
+      suggestionValue
+    )
 
     this.setData({
       draftFieldViews: nextFieldViews,
@@ -987,13 +1031,12 @@ Page<IndexPageData, IndexPageCustom>({
 
     try {
       const updatedItem = await runBusy(this, '正在保存可编辑字段', async () =>
-        this.runtime.updateEditableFields(
-          this.currentItem?.id ?? '',
-          this.runtime.buildEditableInput(
-            getSelectedSceneType(this),
-            extractAnchorValues(this.data.draftFieldViews),
-            this.data.noteValue
-          )
+          this.runtime.updateEditableFields(
+            this.currentItem?.id ?? '',
+            this.runtime.buildEditableInput(
+              extractAnchorValues(this.data.draftFieldViews),
+              this.data.noteValue
+            )
         )
       )
 

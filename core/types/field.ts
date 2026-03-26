@@ -1,21 +1,17 @@
 export const SCENE_FIELD_KEYS = [
-  'entry',
-  'building',
-  'unit',
+  'gate',
+  'facility',
+  'pathMarker',
   'floor',
+  'shop',
+  'clinic',
   'zone',
-  'marker',
-  'code',
-  'parkingType',
-  'departmentZone',
-  'servicePoint',
-  'routeSection',
-  'spotType',
+  'parkingSpot',
 ] as const
 
 export type SceneFieldKey = typeof SCENE_FIELD_KEYS[number]
 
-export type SceneFieldControl = 'single_select'
+export type SceneFieldControl = 'text' | 'hybrid'
 
 export interface SceneFieldOption {
   readonly value: string
@@ -31,6 +27,8 @@ export interface SceneFieldDefinition {
   readonly required: boolean
   readonly primary: boolean
   readonly description?: string
+  readonly placeholder?: string
+  readonly maxLength?: number
 }
 
 export type SceneFieldValueMap = Partial<Record<SceneFieldKey, string>>
@@ -39,7 +37,7 @@ export const SCENE_FIELD_ISSUE_CODES = [
   'invalid_payload',
   'unknown_field',
   'invalid_value_type',
-  'invalid_value',
+  'value_too_long',
   'missing_required_field',
 ] as const
 

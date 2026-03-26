@@ -39,7 +39,6 @@ export interface CreateItemInput {
 }
 
 export interface UpdateEditableItemInput {
-  readonly sceneType?: SceneType
   readonly anchorValues?: SceneFieldValueMap
   readonly note?: string
 }

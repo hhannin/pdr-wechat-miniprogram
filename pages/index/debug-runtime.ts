@@ -173,12 +173,10 @@ export class DebugRuntime {
   }
 
   buildEditableInput(
-    sceneType: Item['sceneType'],
     anchorValues: SceneFieldValueMap,
     note: string
   ): UpdateEditableItemInput {
     return Object.freeze({
-      sceneType,
       anchorValues,
       note,
     })

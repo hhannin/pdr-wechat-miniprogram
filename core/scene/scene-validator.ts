@@ -6,25 +6,7 @@ import type {
   SceneFieldValueMap,
   SceneType,
 } from '../types'
-import { SCENE_TYPES } from '../types'
 import { getSceneFieldDefinitions, getSceneFieldDefinition } from './scene-catalog'
-
-const FIELD_OPTION_VALUE_INDEX: Readonly<
-  Record<SceneType, Partial<Record<SceneFieldKey, ReadonlySet<string>>>>
-> = Object.freeze(
-  SCENE_TYPES.reduce((sceneAccumulator, sceneType) => {
-    const fieldValueSetMap: Partial<Record<SceneFieldKey, ReadonlySet<string>>> = {}
-
-    for (const field of getSceneFieldDefinitions(sceneType)) {
-      fieldValueSetMap[field.key] = new Set(
-        field.options.map((option) => option.value)
-      )
-    }
-
-    sceneAccumulator[sceneType] = Object.freeze(fieldValueSetMap)
-    return sceneAccumulator
-  }, {} as Record<SceneType, Partial<Record<SceneFieldKey, ReadonlySet<string>>>>)
-)
 
 function freezeValidationResult(
   normalizedValues: SceneFieldValueMap,
@@ -44,6 +26,22 @@ function buildMissingRequiredIssue(
     code: 'missing_required_field',
     key: field.key,
     message: `Missing required scene field "${field.key}".`,
+  })
+}
+
+function normalizeSceneFieldValue(rawValue: string): string {
+  return rawValue.replace(/\s+/g, ' ').trim()
+}
+
+function buildValueTooLongIssue(
+  field: SceneFieldDefinition,
+  value: string
+): SceneFieldValidationIssue {
+  return Object.freeze({
+    code: 'value_too_long',
+    key: field.key,
+    value,
+    message: `Scene field "${field.key}" exceeds the max length limit.`,
   })
 }
 
@@ -99,21 +97,18 @@ export function validateSceneFieldValues(
       continue
     }
 
-    const normalizedValue = rawValue.trim()
+    const normalizedValue = normalizeSceneFieldValue(rawValue)
     if (!normalizedValue) {
       continue
     }
 
-    const allowedValues = FIELD_OPTION_VALUE_INDEX[sceneType][key]
-    if (!allowedValues || !allowedValues.has(normalizedValue)) {
-      issues.push(
-        Object.freeze({
-          code: 'invalid_value',
-          key,
-          value: rawValue,
-          message: `Invalid option "${rawValue}" for scene field "${key}".`,
-        })
-      )
+    if (
+      typeof field.maxLength === 'number' &&
+      Number.isInteger(field.maxLength) &&
+      field.maxLength > 0 &&
+      normalizedValue.length > field.maxLength
+    ) {
+      issues.push(buildValueTooLongIssue(field, normalizedValue))
       continue
     }
 

@@ -54,7 +54,7 @@
         range-key="label"
         value="{{selectedSceneIndex}}"
         bindchange="handleSceneChange"
-        disabled="{{busy}}"
+        disabled="{{busy || isEditMode}}"
       >
         <view class="picker-box">
           {{sceneOptions[selectedSceneIndex].label}}
@@ -133,30 +133,45 @@
 
     <view class="field-group" wx:if="{{draftFieldViews.length > 0}}">
       <view class="field-label">语义锚点</view>
-      <block wx:for="{{draftFieldViews}}" wx:key="key">
+      <block wx:for="{{draftFieldViews}}" wx:key="key" wx:for-item="fieldView">
         <view class="anchor-row">
           <view class="anchor-head">
-            <view class="anchor-title">{{item.label}}</view>
+            <view class="anchor-title">{{fieldView.label}}</view>
             <view class="anchor-badges">
-              <text class="badge" wx:if="{{item.primary}}">核心</text>
-              <text class="badge" wx:if="{{item.required}}">必填</text>
+              <text class="badge" wx:if="{{fieldView.primary}}">核心</text>
+              <text class="badge" wx:if="{{fieldView.required}}">必填</text>
             </view>
           </view>
-          <picker
-            mode="selector"
-            range="{{item.options}}"
-            range-key="label"
-            value="{{item.selectedIndex}}"
-            data-field-key="{{item.key}}"
-            bindchange="handleFieldChange"
+          <input
+            class="field-input"
+            value="{{fieldView.value}}"
+            placeholder="{{fieldView.placeholder}}"
+            maxlength="{{fieldView.maxLength}}"
+            data-field-key="{{fieldView.key}}"
+            bindinput="handleFieldInput"
             disabled="{{busy}}"
+          />
+          <view
+            class="suggestion-wrap"
+            wx:if="{{fieldView.control === 'hybrid' && fieldView.suggestions.length > 0}}"
           >
-            <view class="picker-box {{item.isEmpty ? 'placeholder-text' : ''}}">
-              {{item.selectedLabel}}
-            </view>
-          </picker>
-          <view class="field-desc" wx:if="{{item.description}}">
-            {{item.description}}
+            <block
+              wx:for="{{fieldView.suggestions}}"
+              wx:key="value"
+              wx:for-item="suggestion"
+            >
+              <view
+                class="suggestion-chip {{suggestion.isActive ? 'suggestion-chip-active' : ''}}"
+                data-field-key="{{fieldView.key}}"
+                data-suggestion-value="{{suggestion.value}}"
+                bindtap="handleFieldSuggestionTap"
+              >
+                {{suggestion.label}}
+              </view>
+            </block>
+          </view>
+          <view class="field-desc" wx:if="{{fieldView.description}}">
+            {{fieldView.description}}
           </view>
         </view>
       </block>
