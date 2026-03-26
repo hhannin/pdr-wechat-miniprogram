@@ -1,0 +1,107 @@
+<view class="page-shell">
+  <view class="hero-card">
+    <view class="hero-kicker">Foots New Frontend</view>
+    <view class="hero-title">你已经记下的位置，会在这里集中回找。</view>
+    <view class="hero-subtitle">
+      列表只读取本地摘要，点击卡片查看详情；轻扫卡片可以露出编辑和删除操作。
+    </view>
+  </view>
+
+  <view class="status-card" wx:if="{{busy || statusText || errorText}}">
+    <view class="status-line status-busy" wx:if="{{busy}}">
+      处理中：{{busyText}}
+    </view>
+    <view class="status-line status-success" wx:if="{{statusText}}">
+      {{statusText}}
+    </view>
+    <view class="status-line status-error" wx:if="{{errorText}}">
+      {{errorText}}
+    </view>
+  </view>
+
+  <view class="toolbar-card" wx:if="{{pageReady}}">
+    <view class="toolbar-copy">
+      <view class="toolbar-title">记录列表</view>
+      <view class="toolbar-desc">{{itemCountText}}</view>
+    </view>
+    <button class="refresh-button" size="mini" bindtap="handleRefreshTap" disabled="{{busy}}">
+      刷新
+    </button>
+  </view>
+
+  <view class="records-list" wx:if="{{pageReady && hasItems}}">
+    <block wx:for="{{items}}" wx:key="id" wx:for-item="item">
+      <view class="record-row">
+        <view class="record-actions">
+          <view
+            class="record-action record-action-edit {{item.isSwipeOpen ? 'record-action-visible' : ''}}"
+            catchtap="handleEditTap"
+            data-item-id="{{item.id}}"
+          >
+            编辑
+          </view>
+          <view
+            class="record-action record-action-delete {{item.isSwipeOpen ? 'record-action-visible' : ''}}"
+            catchtap="handleDeleteTap"
+            data-item-id="{{item.id}}"
+          >
+            删除
+          </view>
+        </view>
+
+        <view
+          class="record-card {{item.isSwipeOpen ? 'record-card-open' : ''}} {{item.isHighlighted ? 'record-card-highlighted' : ''}}"
+          data-item-id="{{item.id}}"
+          bindtap="handleCardTap"
+          bindtouchstart="handleCardTouchStart"
+          bindtouchend="handleCardTouchEnd"
+        >
+          <image wx:if="{{item.hasPhoto}}" class="record-photo" src="{{item.coverPhotoPath}}" mode="aspectFill" />
+          <view class="record-body">
+            <view class="record-head">
+              <view class="record-scene">{{item.sceneLabel}}</view>
+              <view class="record-meta">{{item.meta}}</view>
+            </view>
+            <view class="record-title">{{item.title}}</view>
+            <view class="record-subtitle">{{item.subtitle}}</view>
+            <view class="record-anchors">{{item.anchorsText}}</view>
+            <view class="record-note">{{item.noteText}}</view>
+          </view>
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="empty-card" wx:if="{{pageReady && !hasItems}}">
+    <view class="empty-figure">
+      <view class="empty-circle empty-circle-large"></view>
+      <view class="empty-circle empty-circle-small"></view>
+      <view class="empty-card-shape"></view>
+    </view>
+    <view class="empty-title">还没有任何记录</view>
+    <view class="empty-desc">
+      先去选择一个场景，记下位置、照片和关键线索；保存后它就会出现在这里。
+    </view>
+    <navigator class="empty-action" url="{{footerNavItems[0].path}}" open-type="redirect">
+      去新建场景页
+    </navigator>
+  </view>
+
+  <view class="loading-card" wx:if="{{!pageReady}}">
+    <view class="loading-title">正在读取本地记录</view>
+    <view class="loading-desc">列表页会优先读取本地摘要，避免每次都扫描完整详情文件。</view>
+  </view>
+
+  <view class="footer-nav">
+    <block wx:for="{{footerNavItems}}" wx:key="key" wx:for-item="navItem">
+      <navigator
+        class="footer-nav-item {{navItem.isActive ? 'footer-nav-item-active' : ''}}"
+        url="{{navItem.path}}"
+        open-type="redirect"
+      >
+        <view class="footer-nav-label">{{navItem.label}}</view>
+        <view class="footer-nav-subtitle">{{navItem.subtitle}}</view>
+      </navigator>
+    </block>
+  </view>
+</view>

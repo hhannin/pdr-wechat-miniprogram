@@ -1,12 +1,15 @@
 {
   "pages": [
-    "pages/index/index"
+    "pages/index/index",
+    "pages/scene/index",
+    "pages/records/index",
+    "pages/record/index"
   ],
   "window": {
-    "navigationBarTitleText": "Foots Debug",
-    "navigationBarBackgroundColor": "#000000",
-    "navigationBarTextStyle": "white",
-    "backgroundColor": "#000000"
+    "navigationBarTitleText": "Foots",
+    "navigationBarBackgroundColor": "#f4efe5",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f4efe5"
   },
   "style": "v2",
   "componentFramework": "glass-easel"

@@ -1,0 +1,198 @@
+<view class="page-shell" wx:if="{{pageReady}}">
+  <view class="hero-card">
+    <view class="hero-head">
+      <view class="hero-kicker">{{sceneLabel}}</view>
+      <view class="hero-mode">
+        {{isCreateMode ? '创建态' : isEditMode ? '编辑态' : '查看态'}}
+      </view>
+    </view>
+    <view class="hero-title">{{pageTitle}}</view>
+    <view class="hero-subtitle">{{pageSubtitle}}</view>
+  </view>
+
+  <view class="status-card" wx:if="{{busy || statusText || errorText}}">
+    <view class="status-line status-busy" wx:if="{{busy}}">
+      处理中：{{busyText}}
+    </view>
+    <view class="status-line status-success" wx:if="{{statusText}}">
+      {{statusText}}
+    </view>
+    <view class="status-line status-error" wx:if="{{errorText}}">
+      {{errorText}}
+    </view>
+  </view>
+
+  <view class="meta-card" wx:if="{{!isCreateMode}}">
+    <view class="meta-grid">
+      <view class="meta-item">
+        <view class="meta-label">记录 ID</view>
+        <view class="meta-value">{{recordId}}</view>
+      </view>
+      <view class="meta-item">
+        <view class="meta-label">创建时间</view>
+        <view class="meta-value">{{createdAtText}}</view>
+      </view>
+      <view class="meta-item">
+        <view class="meta-label">更新时间</view>
+        <view class="meta-value">{{updatedAtText}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section-card">
+    <view class="section-head">
+      <view class="section-title">位置</view>
+      <view class="section-desc">位置由用户通过地图选点确认，创建后不可修改。</view>
+    </view>
+    <view class="info-panel">
+      <view class="info-title {{hasLocation ? '' : 'placeholder-text'}}">{{locationTitle}}</view>
+      <view class="info-subtitle">{{locationSubtitle}}</view>
+      <view class="info-tag" wx:if="{{locationSourceText}}">{{locationSourceText}}</view>
+    </view>
+    <view class="button-row" wx:if="{{isCreateMode}}">
+      <button class="soft-button" bindtap="handlePickCurrentLocation" disabled="{{busy}}">
+        地图选当前位置
+      </button>
+      <button class="soft-button" bindtap="handlePickManualLocation" disabled="{{busy}}">
+        地图选其他位置
+      </button>
+    </view>
+    <view class="button-row">
+      <button class="outline-button" bindtap="handleOpenLocation" disabled="{{busy || !hasLocation}}">
+        打开地图导航
+      </button>
+    </view>
+  </view>
+
+  <view class="section-card">
+    <view class="section-head">
+      <view class="section-title">照片线索</view>
+      <view class="section-desc">照片用于回找，不进入系统相册，只保存在小程序本地目录。</view>
+    </view>
+    <view class="info-panel">
+      <image wx:if="{{hasPhoto}}" class="photo-preview" src="{{photoPath}}" mode="aspectFill" />
+      <view class="info-subtitle {{hasPhoto ? '' : 'placeholder-text'}}">{{photoMeta}}</view>
+    </view>
+    <view class="button-row" wx:if="{{isCreateMode}}">
+      <button class="soft-button" bindtap="handleCapturePhoto" disabled="{{busy}}">
+        拍一张线索照片
+      </button>
+      <button class="outline-button" bindtap="handleClearDraftPhoto" disabled="{{busy || !hasPhoto}}">
+        清除照片
+      </button>
+    </view>
+    <view class="button-row" wx:if="{{canAttachPhoto}}">
+      <button class="soft-button" bindtap="handleCapturePhoto" disabled="{{busy}}">
+        补一张线索照片
+      </button>
+    </view>
+  </view>
+
+  <view class="section-card" wx:if="{{fieldViews.length > 0}}">
+    <view class="section-head">
+      <view class="section-title">场景线索</view>
+      <view class="section-desc">{{sceneDescription}}</view>
+    </view>
+
+    <block wx:for="{{fieldViews}}" wx:key="key" wx:for-item="fieldView">
+      <view class="field-block">
+        <view class="field-head">
+          <view class="field-title">{{fieldView.label}}</view>
+          <view class="field-badge" wx:if="{{fieldView.primary}}">核心</view>
+        </view>
+
+        <view class="field-static" wx:if="{{isViewMode}}">
+          <view class="field-static-value {{fieldView.value ? '' : 'placeholder-text'}}">
+            {{fieldView.displayValue || '还没有补充'}}
+          </view>
+        </view>
+
+        <block wx:if="{{!isViewMode}}">
+          <input
+            class="field-input"
+            value="{{fieldView.value}}"
+            placeholder="{{fieldView.placeholder}}"
+            maxlength="{{fieldView.maxLength}}"
+            data-field-key="{{fieldView.key}}"
+            bindinput="handleFieldInput"
+            disabled="{{busy}}"
+          />
+          <view
+            class="suggestion-wrap"
+            wx:if="{{fieldView.control === 'hybrid' && fieldView.suggestions.length > 0}}"
+          >
+            <block wx:for="{{fieldView.suggestions}}" wx:key="value" wx:for-item="suggestion">
+              <view
+                class="suggestion-chip {{suggestion.isActive ? 'suggestion-chip-active' : ''}}"
+                data-field-key="{{fieldView.key}}"
+                data-suggestion-value="{{suggestion.value}}"
+                bindtap="handleFieldSuggestionTap"
+              >
+                {{suggestion.label}}
+              </view>
+            </block>
+          </view>
+        </block>
+
+        <view class="field-desc" wx:if="{{fieldView.description}}">
+          {{fieldView.description}}
+        </view>
+      </view>
+    </block>
+  </view>
+
+  <view class="section-card">
+    <view class="section-head">
+      <view class="section-title">备注</view>
+      <view class="section-desc">用来补足最后 50 米的真实线索，比如柱子编号、门牌或显眼参照物。</view>
+    </view>
+
+    <view class="note-view" wx:if="{{isViewMode}}">
+      <view class="note-text {{noteValue ? '' : 'placeholder-text'}}">{{noteDisplayText}}</view>
+    </view>
+
+    <block wx:if="{{!isViewMode}}">
+      <textarea
+        class="note-input"
+        auto-height
+        maxlength="2000"
+        value="{{noteValue}}"
+        placeholder="例如：电梯厅 3 号口旁、黄色柱子 C34、入口右转第二间。"
+        bindinput="handleNoteInput"
+        disabled="{{busy}}"
+      />
+      <view class="field-desc">当前字数：{{noteLength}} / 2000</view>
+    </block>
+  </view>
+
+  <view class="action-stack" wx:if="{{isCreateMode}}">
+    <button class="primary-button" bindtap="handleCreate" loading="{{busy}}" disabled="{{busy || !canCreate}}">
+      创建记录
+    </button>
+  </view>
+
+  <view class="action-stack" wx:if="{{isViewMode}}">
+    <button class="primary-button" bindtap="handleEnterEdit" disabled="{{busy}}">
+      编辑可变字段
+    </button>
+    <button class="danger-button" bindtap="handleDeleteItem" disabled="{{busy}}">
+      删除记录
+    </button>
+  </view>
+
+  <view class="action-stack" wx:if="{{isEditMode}}">
+    <button class="primary-button" bindtap="handleSaveEdit" loading="{{busy}}" disabled="{{busy || !canSave}}">
+      保存修改
+    </button>
+    <button class="outline-button" bindtap="handleCancelEdit" disabled="{{busy}}">
+      取消编辑
+    </button>
+  </view>
+</view>
+<view class="page-shell" wx:else>
+  <view class="hero-card">
+    <view class="hero-kicker">Foots</view>
+    <view class="hero-title">正在准备记录页</view>
+    <view class="hero-subtitle">正在读取本地记录和场景定义，请稍等片刻。</view>
+  </view>
+</view>

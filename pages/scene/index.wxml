@@ -1,0 +1,53 @@
+<view class="page-shell">
+  <view class="hero-card">
+    <view class="hero-kicker">Foots New Frontend</view>
+    <view class="hero-title">先选场景，再进入记录页。</view>
+    <view class="hero-subtitle">
+      从这里开始新建流程：选场景后进入记录页，完成拍照、选位置、填写字段与保存。
+    </view>
+  </view>
+
+  <view class="section-head">
+    <view class="section-title">选择场景</view>
+    <view class="section-desc">
+      场景卡片直接读取后端场景定义，后续字段和记录页也会沿用同一套数据合同。
+    </view>
+  </view>
+
+  <view class="scene-list">
+    <block wx:for="{{sceneCards}}" wx:key="sceneType" wx:for-item="sceneCard">
+      <navigator
+        class="scene-card"
+        url="{{sceneCard.createUrl}}"
+      >
+        <view class="scene-card-head">
+          <view class="scene-card-kicker">{{sceneCard.eyebrow}}</view>
+          <view class="scene-card-arrow">立即记录</view>
+        </view>
+        <view class="scene-card-title">{{sceneCard.label}}</view>
+        <view class="scene-card-desc">{{sceneCard.description}}</view>
+        <view class="scene-card-detail">{{sceneCard.detail}}</view>
+      </navigator>
+    </block>
+  </view>
+
+  <view class="roadmap-card">
+    <view class="roadmap-title">现在可以做什么</view>
+    <view class="roadmap-item">1. 选择场景后会进入新建记录页。</view>
+    <view class="roadmap-item">2. 在记录页完成选点、拍照、填写字段和保存。</view>
+    <view class="roadmap-item">3. 保存后会进入查看态，并可继续编辑可变字段。</view>
+  </view>
+
+  <view class="footer-nav">
+    <block wx:for="{{footerNavItems}}" wx:key="key" wx:for-item="navItem">
+      <navigator
+        class="footer-nav-item {{navItem.isActive ? 'footer-nav-item-active' : ''}}"
+        url="{{navItem.path}}"
+        open-type="redirect"
+      >
+        <view class="footer-nav-label">{{navItem.label}}</view>
+        <view class="footer-nav-subtitle">{{navItem.subtitle}}</view>
+      </navigator>
+    </block>
+  </view>
+</view>

@@ -1,0 +1,171 @@
+.page-shell {
+  min-height: 100vh;
+  padding: 36rpx 28rpx 224rpx;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at top right, rgba(199, 141, 63, 0.18), transparent 34%),
+    radial-gradient(circle at top left, rgba(31, 106, 70, 0.1), transparent 28%),
+    linear-gradient(180deg, #fbf7f1 0%, #f4efe5 62%, #efe8da 100%);
+  color: #223c2b;
+}
+
+.hero-card,
+.roadmap-card,
+.scene-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 251, 245, 0.92);
+  border: 1px solid rgba(34, 60, 43, 0.1);
+  border-radius: 32rpx;
+  box-shadow: 0 22rpx 54rpx rgba(49, 42, 27, 0.1);
+}
+
+.hero-card {
+  padding: 34rpx 30rpx;
+}
+
+.hero-card::after,
+.roadmap-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -48rpx -54rpx auto;
+  width: 220rpx;
+  height: 220rpx;
+  border-radius: 999rpx;
+  background: radial-gradient(circle, rgba(199, 141, 63, 0.16), transparent 70%);
+}
+
+.hero-kicker,
+.scene-card-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(31, 106, 70, 0.12);
+  color: #174f35;
+  font-size: 22rpx;
+  letter-spacing: 0.08em;
+}
+
+.hero-title {
+  margin-top: 22rpx;
+  font-size: 52rpx;
+  line-height: 1.16;
+  font-weight: 700;
+}
+
+.hero-subtitle,
+.section-desc,
+.scene-card-desc,
+.scene-card-detail,
+.roadmap-item,
+.footer-nav-subtitle {
+  font-size: 25rpx;
+  line-height: 1.7;
+  color: rgba(34, 60, 43, 0.68);
+}
+
+.hero-subtitle {
+  margin-top: 18rpx;
+}
+
+.section-head {
+  margin-top: 36rpx;
+  padding: 0 6rpx;
+}
+
+.section-title,
+.roadmap-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #223c2b;
+}
+
+.section-desc {
+  margin-top: 12rpx;
+}
+
+.scene-list {
+  margin-top: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.scene-card {
+  display: block;
+  padding: 28rpx 26rpx;
+}
+
+.scene-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.scene-card-arrow {
+  color: #1f6a46;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.scene-card-title {
+  margin-top: 18rpx;
+  font-size: 38rpx;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.scene-card-desc {
+  margin-top: 10rpx;
+}
+
+.scene-card-detail {
+  margin-top: 14rpx;
+}
+
+.roadmap-card {
+  margin-top: 28rpx;
+  padding: 28rpx 26rpx;
+}
+
+.roadmap-item {
+  margin-top: 12rpx;
+}
+
+.footer-nav {
+  position: fixed;
+  left: 28rpx;
+  right: 28rpx;
+  bottom: 28rpx;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  padding: 14rpx;
+  border-radius: 28rpx;
+  background: rgba(255, 252, 247, 0.92);
+  border: 1px solid rgba(34, 60, 43, 0.08);
+  box-shadow: 0 20rpx 56rpx rgba(44, 38, 27, 0.16);
+}
+
+.footer-nav-item {
+  display: block;
+  padding: 18rpx 16rpx;
+  border-radius: 22rpx;
+  background: transparent;
+}
+
+.footer-nav-item-active {
+  background: linear-gradient(135deg, rgba(31, 106, 70, 0.12), rgba(199, 141, 63, 0.12));
+}
+
+.footer-nav-label {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #223c2b;
+}
+
+.footer-nav-subtitle {
+  margin-top: 6rpx;
+}

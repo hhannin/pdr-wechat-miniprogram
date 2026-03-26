@@ -1,0 +1,337 @@
+.page-shell {
+  min-height: 100vh;
+  padding: 36rpx 28rpx 224rpx;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at top right, rgba(31, 106, 70, 0.12), transparent 28%),
+    radial-gradient(circle at top left, rgba(199, 141, 63, 0.18), transparent 32%),
+    linear-gradient(180deg, #fbf7f1 0%, #f4efe5 62%, #efe8da 100%);
+  color: #223c2b;
+}
+
+.hero-card,
+.empty-card,
+.toolbar-card,
+.status-card,
+.record-card,
+.loading-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 251, 245, 0.92);
+  border: 1px solid rgba(34, 60, 43, 0.1);
+  border-radius: 32rpx;
+  box-shadow: 0 22rpx 54rpx rgba(49, 42, 27, 0.1);
+}
+
+.hero-card {
+  padding: 34rpx 30rpx;
+}
+
+.hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(31, 106, 70, 0.12);
+  color: #1f6a46;
+  font-size: 22rpx;
+  letter-spacing: 0.08em;
+}
+
+.hero-title {
+  margin-top: 22rpx;
+  font-size: 52rpx;
+  line-height: 1.16;
+  font-weight: 700;
+}
+
+.hero-subtitle,
+.empty-desc,
+.footer-nav-subtitle,
+.toolbar-desc,
+.status-line,
+.record-subtitle,
+.record-anchors,
+.record-note,
+.record-meta {
+  font-size: 25rpx;
+  line-height: 1.7;
+  color: rgba(34, 60, 43, 0.68);
+}
+
+.hero-subtitle {
+  margin-top: 18rpx;
+}
+
+.status-card {
+  margin-top: 22rpx;
+  padding: 22rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.status-busy {
+  color: #6a7d96;
+}
+
+.status-success {
+  color: #20563a;
+}
+
+.status-error {
+  color: #8c3340;
+}
+
+.toolbar-card,
+.empty-card {
+  margin-top: 26rpx;
+}
+
+.toolbar-card {
+  padding: 24rpx 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.toolbar-title,
+.empty-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #223c2b;
+}
+
+.refresh-button {
+  background: rgba(31, 106, 70, 0.12);
+  color: #174f35;
+  border-radius: 999rpx;
+}
+
+.records-list {
+  margin-top: 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+}
+
+.record-row {
+  position: relative;
+  overflow: hidden;
+  border-radius: 32rpx;
+}
+
+.record-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 240rpx;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  z-index: 1;
+}
+
+.record-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.record-action-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.record-action-edit {
+  background: linear-gradient(180deg, #2f7753, #245f42);
+}
+
+.record-action-delete {
+  background: linear-gradient(180deg, #a44c56, #7f3640);
+}
+
+.record-card {
+  display: block;
+  position: relative;
+  z-index: 2;
+  padding: 34rpx 28rpx 30rpx;
+  transition: transform 180ms ease;
+}
+
+.record-card-open {
+  transform: translateX(-240rpx);
+}
+
+.record-card-highlighted {
+  border-color: rgba(31, 106, 70, 0.26);
+  box-shadow:
+    0 22rpx 54rpx rgba(49, 42, 27, 0.1),
+    0 0 0 2rpx rgba(31, 106, 70, 0.08);
+}
+
+.record-photo {
+  width: 100%;
+  height: 220rpx;
+  border-radius: 22rpx;
+  display: block;
+}
+
+.record-body {
+  margin-top: 18rpx;
+}
+
+.record-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.record-scene {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(31, 106, 70, 0.12);
+  color: #174f35;
+  font-size: 22rpx;
+}
+
+.record-title {
+  margin-top: 12rpx;
+  font-size: 34rpx;
+  line-height: 1.3;
+  font-weight: 700;
+  color: #223c2b;
+}
+
+.record-subtitle {
+  margin-top: 8rpx;
+}
+
+.record-anchors,
+.record-note {
+  margin-top: 12rpx;
+}
+
+.empty-card {
+  padding: 34rpx 28rpx 30rpx;
+}
+
+.loading-card {
+  margin-top: 24rpx;
+  padding: 28rpx 26rpx;
+}
+
+.loading-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #223c2b;
+}
+
+.loading-desc {
+  margin-top: 12rpx;
+  font-size: 25rpx;
+  line-height: 1.7;
+  color: rgba(34, 60, 43, 0.68);
+}
+
+.empty-figure {
+  position: relative;
+  height: 240rpx;
+}
+
+.empty-circle {
+  position: absolute;
+  border-radius: 999rpx;
+}
+
+.empty-circle-large {
+  width: 220rpx;
+  height: 220rpx;
+  right: 20rpx;
+  top: 0;
+  background: radial-gradient(circle, rgba(199, 141, 63, 0.22), transparent 68%);
+}
+
+.empty-circle-small {
+  width: 140rpx;
+  height: 140rpx;
+  left: 10rpx;
+  bottom: 14rpx;
+  background: radial-gradient(circle, rgba(31, 106, 70, 0.18), transparent 68%);
+}
+
+.empty-card-shape {
+  position: absolute;
+  left: 60rpx;
+  right: 70rpx;
+  top: 34rpx;
+  bottom: 26rpx;
+  border-radius: 28rpx;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(246, 239, 227, 0.88));
+  border: 1px solid rgba(34, 60, 43, 0.08);
+  box-shadow: 0 18rpx 40rpx rgba(44, 38, 27, 0.08);
+}
+
+.empty-desc {
+  margin-top: 14rpx;
+}
+
+.empty-action {
+  display: inline-flex;
+  margin-top: 24rpx;
+  align-items: center;
+  justify-content: center;
+  padding: 18rpx 28rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #1f6a46, #2b7c55);
+  color: #f7fff9;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.footer-nav {
+  position: fixed;
+  left: 28rpx;
+  right: 28rpx;
+  bottom: 28rpx;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  padding: 14rpx;
+  border-radius: 28rpx;
+  background: rgba(255, 252, 247, 0.92);
+  border: 1px solid rgba(34, 60, 43, 0.08);
+  box-shadow: 0 20rpx 56rpx rgba(44, 38, 27, 0.16);
+}
+
+.footer-nav-item {
+  display: block;
+  padding: 18rpx 16rpx;
+  border-radius: 22rpx;
+  background: transparent;
+}
+
+.footer-nav-item-active {
+  background: linear-gradient(135deg, rgba(31, 106, 70, 0.12), rgba(199, 141, 63, 0.12));
+}
+
+.footer-nav-label {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #223c2b;
+}
+
+.footer-nav-subtitle {
+  margin-top: 6rpx;
+}

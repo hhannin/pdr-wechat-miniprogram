@@ -16,6 +16,7 @@ import {
 import { isMapError } from '../../infra/map'
 import { isMediaError } from '../../infra/media'
 import { debugRuntime, type DebugRuntime } from './debug-runtime'
+import { FRONTEND_ROUTES, USE_NEW_FRONTEND } from './frontend-config'
 
 interface DebugSceneOption {
   readonly value: SceneType
@@ -160,6 +161,20 @@ const SCENE_OPTIONS: readonly DebugSceneOption[] = listSceneDefinitions().map(
 
 const DEFAULT_SCENE_TYPE: SceneType = SCENE_OPTIONS[0]?.value ?? 'default'
 const DEFAULT_FIELD_MAX_LENGTH = 40
+
+function reLaunchTo(url: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    wx.reLaunch({
+      url,
+      success: () => {
+        resolve()
+      },
+      fail: (error) => {
+        reject(error)
+      },
+    })
+  })
+}
 
 function formatTimestamp(timestampMs: number): string {
   const date = new Date(timestampMs)
@@ -653,6 +668,18 @@ Page<IndexPageData, IndexPageCustom>({
   currentItem: null,
 
   async onLoad() {
+    let fallbackEntryError = ''
+
+    if (USE_NEW_FRONTEND) {
+      try {
+        await reLaunchTo(FRONTEND_ROUTES.scene)
+        return
+      } catch (error) {
+        console.error('Failed to enter the new frontend entry page.', error)
+        fallbackEntryError = '新前端入口切换失败，已回退到调试前端。'
+      }
+    }
+
     clearFeedback(this)
     enterCreateMode(this, DEFAULT_SCENE_TYPE)
 
@@ -665,8 +692,11 @@ Page<IndexPageData, IndexPageCustom>({
         pageReady: true,
       })
       setFeedback(this, {
-        statusText: '调试页已就绪，可以开始创建记录。',
-        errorText: '',
+        statusText:
+          fallbackEntryError.length > 0
+            ? '调试页已就绪，你仍然可以继续验证后端能力。'
+            : '调试页已就绪，可以开始创建记录。',
+        errorText: fallbackEntryError,
       })
     } catch (error) {
       await handleAsyncError(this, error, '初始化失败：')
