@@ -22,14 +22,14 @@ export interface FrontendPrimaryNavItem {
 export const FRONTEND_PRIMARY_NAV: readonly FrontendPrimaryNavItem[] = Object.freeze([
   {
     key: 'scene',
-    label: '新建场景',
-    subtitle: '选择场景后进入创建页',
+    label: '新建',
+    subtitle: '',
     path: FRONTEND_ROUTES.scene,
   },
   {
     key: 'records',
-    label: '已记录场景',
-    subtitle: '查看、编辑或删除已有记录',
+    label: '记录',
+    subtitle: '',
     path: FRONTEND_ROUTES.records,
   },
 ])

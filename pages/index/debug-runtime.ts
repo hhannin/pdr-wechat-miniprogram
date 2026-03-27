@@ -142,13 +142,50 @@ export class DebugRuntime {
     return this.itemService.updateEditableFields(itemId, input)
   }
 
+  async saveEdit(
+    itemId: string,
+    input: UpdateEditableItemInput,
+    draftPhoto?: PhotoAsset
+  ): Promise<Item> {
+    const updatedItem = await this.itemService.updateEditableFields(itemId, input)
+
+    if (!draftPhoto) {
+      return updatedItem
+    }
+
+    if (updatedItem.photos.length > 0) {
+      throw new ItemDomainError(
+        'photo_already_attached',
+        '该记录已有照片，当前不支持更换。',
+        { itemId: updatedItem.id }
+      )
+    }
+
+    const persistedPhoto = this.photoStore.persistPhoto(updatedItem.id, draftPhoto)
+
+    try {
+      return await this.itemService.attachPhotoIfAbsent(updatedItem.id, persistedPhoto)
+    } catch (error) {
+      try {
+        this.photoStore.deleteAll(updatedItem.id)
+      } catch {
+        // Best effort cleanup for partially persisted photo files.
+      }
+
+      throw error
+    }
+  }
+
   async deleteItem(itemId: string): Promise<void> {
     await this.itemService.deleteById(itemId)
   }
 
   async pickLocation(
     source: LocationSelectionSource,
-    initialLocation?: LocationSnapshot
+    initialLocation?: LocationSnapshot,
+    options: {
+      readonly centerOnCurrentLocation?: boolean
+    } = {}
   ): Promise<LocationSnapshot> {
     return this.locationPicker.pick({
       source,
@@ -158,6 +195,7 @@ export class DebugRuntime {
             longitude: initialLocation.longitude,
           }
         : undefined,
+      centerOnCurrentLocation: options.centerOnCurrentLocation,
     })
   }
 

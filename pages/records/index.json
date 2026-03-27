@@ -1,6 +1,8 @@
 {
-  "navigationBarTitleText": "已记录场景",
+  "navigationBarTitleText": "已记录",
   "navigationBarBackgroundColor": "#f4efe5",
   "navigationBarTextStyle": "black",
-  "backgroundColor": "#f4efe5"
+  "backgroundColor": "#f4efe5",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark"
 }

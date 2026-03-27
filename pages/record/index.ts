@@ -17,7 +17,6 @@ import {
   buildPhotoPresentation,
   extractAnchorValues,
   formatTimestamp,
-  getSceneDescription,
   getSceneLabel,
   trimOptionalString,
   updateFieldViewsByKey,
@@ -42,9 +41,6 @@ interface RecordPageData {
   readonly isEditMode: boolean
   readonly sceneType: SceneType
   readonly sceneLabel: string
-  readonly sceneDescription: string
-  readonly pageTitle: string
-  readonly pageSubtitle: string
   readonly fieldViews: readonly FrontendFieldView[]
   readonly noteValue: string
   readonly noteLength: number
@@ -56,7 +52,6 @@ interface RecordPageData {
   readonly hasPhoto: boolean
   readonly photoPath: string
   readonly photoMeta: string
-  readonly recordId: string
   readonly createdAtText: string
   readonly updatedAtText: string
   readonly canCreate: boolean
@@ -70,8 +65,8 @@ interface RecordPageCustom {
   draftLocation?: LocationSnapshot
   draftPhotos: readonly PhotoAsset[]
   onLoad(options: WechatMiniprogram.IAnyObject): Promise<void>
-  handlePickCurrentLocation(): Promise<void>
-  handlePickManualLocation(): Promise<void>
+  handlePickLocation(): Promise<void>
+  handleClearDraftLocation(): void
   handleOpenLocation(): Promise<void>
   handleCapturePhoto(): Promise<void>
   handleClearDraftPhoto(): void
@@ -152,7 +147,6 @@ function syncRecordState(
   const locationPresentation = buildLocationPresentation(getActiveLocation(page))
   const photoPresentation = buildPhotoPresentation(getActivePhoto(page), mode)
   const sceneLabel = getSceneLabel(sceneType)
-  const hasPhoto = page.currentItem?.photos.length ? page.currentItem.photos.length > 0 : page.draftPhotos.length > 0
 
   page.setData({
     pageMode: mode,
@@ -161,21 +155,6 @@ function syncRecordState(
     isEditMode: mode === 'edit',
     sceneType,
     sceneLabel,
-    sceneDescription: getSceneDescription(sceneType),
-    pageTitle:
-      mode === 'create'
-        ? `创建${sceneLabel}记录`
-        : mode === 'edit'
-          ? '编辑可变字段'
-          : page.currentItem?.location.name ?? `${sceneLabel}记录`,
-    pageSubtitle:
-      mode === 'create'
-        ? '位置是唯一必填项，其余线索可按需补充后再保存。'
-        : mode === 'edit'
-          ? hasPhoto
-            ? '场景、位置、时间和照片已固化；当前可继续编辑场景字段和备注。'
-            : '场景、位置和时间已固化；当前可编辑场景字段、备注，并补一张照片。'
-          : '现在可以直接查看地点线索、打开导航，或进入编辑态调整可变字段。',
     fieldViews: buildFieldViews(sceneType, anchorValues),
     noteValue: note,
     noteLength: note.length,
@@ -187,7 +166,6 @@ function syncRecordState(
     hasPhoto: photoPresentation.hasPhoto,
     photoPath: photoPresentation.photoPath,
     photoMeta: photoPresentation.photoMeta,
-    recordId: page.currentItem?.id ?? '',
     createdAtText: page.currentItem ? formatTimestamp(page.currentItem.createdAt) : '',
     updatedAtText: page.currentItem ? formatTimestamp(page.currentItem.updatedAt) : '',
     canCreate: mode === 'create' && locationPresentation.hasLocation,
@@ -291,7 +269,7 @@ async function handleAsyncError(
 ): Promise<void> {
   if (isMediaError(error) && error.code === 'photo_capture_cancelled') {
     setFeedback(page, {
-      statusText: '已取消拍照。',
+      statusText: '已取消拍照',
       errorText: '',
     })
     return
@@ -299,7 +277,7 @@ async function handleAsyncError(
 
   if (isMapError(error) && error.code === 'location_pick_cancelled') {
     setFeedback(page, {
-      statusText: '已取消地图选点。',
+      statusText: '已取消选点',
       errorText: '',
     })
     return
@@ -376,7 +354,7 @@ async function initializeRecordPage(
     return
   }
 
-  const item = await runBusy(page, '正在读取记录详情', async () =>
+  const item = await runBusy(page, '读取记录', async () =>
     page.runtime.getItem(rawItemId)
   )
 
@@ -410,21 +388,17 @@ const initialData: RecordPageData = {
   isEditMode: false,
   sceneType: DEFAULT_SCENE_TYPE,
   sceneLabel: getSceneLabel(DEFAULT_SCENE_TYPE),
-  sceneDescription: getSceneDescription(DEFAULT_SCENE_TYPE),
-  pageTitle: '创建记录',
-  pageSubtitle: '位置是唯一必填项，其余线索可按需补充后再保存。',
   fieldViews: buildFieldViews(DEFAULT_SCENE_TYPE, {}),
   noteValue: '',
   noteLength: 0,
-  noteDisplayText: '还没有补充备注。',
+  noteDisplayText: '暂无备注',
   hasLocation: false,
-  locationTitle: '尚未选择位置',
-  locationSubtitle: '位置必须通过地图选点确认，不能自动记录。',
+  locationTitle: '地图选点',
+  locationSubtitle: '',
   locationSourceText: '',
   hasPhoto: false,
   photoPath: '',
-  photoMeta: '照片不是必填项；如果现在不拍，创建后仍可以补一张，但补上后不可更换。',
-  recordId: '',
+  photoMeta: '还没有照片',
   createdAtText: '',
   updatedAtText: '',
   canCreate: false,
@@ -456,11 +430,15 @@ Page<RecordPageData, RecordPageCustom>({
     }
   },
 
-  async handlePickCurrentLocation() {
+  async handlePickLocation() {
+    if (this.data.busy) {
+      return
+    }
+
     if (!this.data.isCreateMode) {
       setFeedback(this, {
         statusText: '',
-        errorText: '位置在创建后不可修改。',
+        errorText: '位置已固定',
       })
       return
     }
@@ -468,8 +446,11 @@ Page<RecordPageData, RecordPageCustom>({
     clearFeedback(this)
 
     try {
-      const location = await runBusy(this, '正在打开地图选点', async () =>
-        this.runtime.pickLocation('current', this.draftLocation)
+      const hadLocation = Boolean(this.draftLocation)
+      const location = await runBusy(this, '打开地图', async () =>
+        this.runtime.pickLocation('manual', undefined, {
+          centerOnCurrentLocation: true,
+        })
       )
 
       this.draftLocation = location
@@ -482,41 +463,7 @@ Page<RecordPageData, RecordPageCustom>({
       )
 
       setFeedback(this, {
-        statusText: '位置已选择，可以继续补充信息或直接创建。',
-        errorText: '',
-      })
-    } catch (error) {
-      await handleAsyncError(this, error, '选取位置失败：')
-    }
-  },
-
-  async handlePickManualLocation() {
-    if (!this.data.isCreateMode) {
-      setFeedback(this, {
-        statusText: '',
-        errorText: '位置在创建后不可修改。',
-      })
-      return
-    }
-
-    clearFeedback(this)
-
-    try {
-      const location = await runBusy(this, '正在打开地图选点', async () =>
-        this.runtime.pickLocation('manual', this.draftLocation)
-      )
-
-      this.draftLocation = location
-      syncRecordState(
-        this,
-        'create',
-        this.data.sceneType,
-        extractAnchorValues(this.data.fieldViews),
-        this.data.noteValue
-      )
-
-      setFeedback(this, {
-        statusText: '位置已更新。',
+        statusText: hadLocation ? '位置已更新' : '位置已选',
         errorText: '',
       })
     } catch (error) {
@@ -525,11 +472,15 @@ Page<RecordPageData, RecordPageCustom>({
   },
 
   async handleOpenLocation() {
+    if (this.data.busy) {
+      return
+    }
+
     const activeLocation = getActiveLocation(this)
     if (!activeLocation) {
       setFeedback(this, {
         statusText: '',
-        errorText: '请先选择位置。',
+        errorText: '请先选位置',
       })
       return
     }
@@ -539,7 +490,7 @@ Page<RecordPageData, RecordPageCustom>({
     try {
       await this.runtime.openLocation(activeLocation)
       setFeedback(this, {
-        statusText: '已尝试打开微信地图。',
+        statusText: '已打开地图',
         errorText: '',
       })
     } catch (error) {
@@ -548,11 +499,15 @@ Page<RecordPageData, RecordPageCustom>({
   },
 
   async handleCapturePhoto() {
+    if (this.data.busy) {
+      return
+    }
+
     clearFeedback(this)
 
     if (this.data.isCreateMode) {
       try {
-        const photo = await runBusy(this, '正在调用相机拍照', async () =>
+        const photo = await runBusy(this, '拍照', async () =>
           this.runtime.capturePhoto()
         )
 
@@ -566,7 +521,7 @@ Page<RecordPageData, RecordPageCustom>({
         )
 
         setFeedback(this, {
-          statusText: '照片已加入创建草稿，保存后会固化到本地目录。',
+          statusText: '照片已加入',
           errorText: '',
         })
       } catch (error) {
@@ -579,7 +534,7 @@ Page<RecordPageData, RecordPageCustom>({
     if (!this.data.isEditMode || !this.currentItem) {
       setFeedback(this, {
         statusText: '',
-        errorText: '当前状态不能补充照片。',
+        errorText: '当前不可补照片',
       })
       return
     }
@@ -587,20 +542,27 @@ Page<RecordPageData, RecordPageCustom>({
     if (this.currentItem.photos.length > 0) {
       setFeedback(this, {
         statusText: '',
-        errorText: '该记录已有照片，当前不支持更换。',
+        errorText: '已有照片',
       })
       return
     }
 
     try {
-      const updatedItem = await runBusy(this, '正在补充线索照片', async () => {
-        const photo = await this.runtime.capturePhoto()
-        return this.runtime.attachPhotoIfAbsent(this.currentItem?.id ?? '', photo)
-      })
+      const photo = await runBusy(this, '拍照', async () =>
+        this.runtime.capturePhoto()
+      )
 
-      enterEditMode(this, updatedItem)
+      this.draftPhotos = [photo]
+      syncRecordState(
+        this,
+        'edit',
+        this.currentItem.sceneType,
+        extractAnchorValues(this.data.fieldViews),
+        this.data.noteValue
+      )
+
       setFeedback(this, {
-        statusText: '照片已补充并固化到本地存储。',
+        statusText: '照片已加入',
         errorText: '',
       })
     } catch (error) {
@@ -609,11 +571,35 @@ Page<RecordPageData, RecordPageCustom>({
   },
 
   handleClearDraftPhoto() {
-    if (!this.data.isCreateMode) {
+    if (this.data.busy) {
+      return
+    }
+
+    if (!this.data.isCreateMode && (!this.data.isEditMode || !this.currentItem)) {
       return
     }
 
     this.draftPhotos = []
+    syncRecordState(
+      this,
+      this.data.isCreateMode ? 'create' : 'edit',
+      this.currentItem?.sceneType ?? this.data.sceneType,
+      extractAnchorValues(this.data.fieldViews),
+      this.data.noteValue
+    )
+
+    setFeedback(this, {
+      statusText: '已移除照片',
+      errorText: '',
+    })
+  },
+
+  handleClearDraftLocation() {
+    if (!this.data.isCreateMode || this.data.busy) {
+      return
+    }
+
+    this.draftLocation = undefined
     syncRecordState(
       this,
       'create',
@@ -623,7 +609,7 @@ Page<RecordPageData, RecordPageCustom>({
     )
 
     setFeedback(this, {
-      statusText: '已移除创建前照片。',
+      statusText: '已移除位置',
       errorText: '',
     })
   },
@@ -634,7 +620,7 @@ Page<RecordPageData, RecordPageCustom>({
       return
     }
 
-      this.setData({
+    this.setData({
       fieldViews: updateFieldViewsByKey(
         this.data.sceneType,
         this.data.fieldViews,
@@ -684,7 +670,7 @@ Page<RecordPageData, RecordPageCustom>({
     if (!this.draftLocation) {
       setFeedback(this, {
         statusText: '',
-        errorText: '创建前必须先选位置。',
+        errorText: '请先选位置',
       })
       return
     }
@@ -692,7 +678,7 @@ Page<RecordPageData, RecordPageCustom>({
     clearFeedback(this)
 
     try {
-      const createdItem = await runBusy(this, '正在创建记录', async () =>
+      const createdItem = await runBusy(this, '创建', async () =>
         this.runtime.create({
           sceneType: this.data.sceneType,
           location: this.draftLocation as LocationSnapshot,
@@ -738,7 +724,7 @@ Page<RecordPageData, RecordPageCustom>({
     if (!this.currentItem || !this.data.isEditMode) {
       setFeedback(this, {
         statusText: '',
-        errorText: '当前没有可保存的编辑内容。',
+        errorText: '暂无可保存内容',
       })
       return
     }
@@ -746,8 +732,8 @@ Page<RecordPageData, RecordPageCustom>({
     clearFeedback(this)
 
     try {
-      const updatedItem = await runBusy(this, '正在保存修改', async () =>
-        this.runtime.updateEditableFields(
+      const updatedItem = await runBusy(this, '保存', async () =>
+        this.runtime.saveEdit(
           this.currentItem?.id ?? '',
           this.runtime.buildEditableInput(
             sanitizeSceneFieldValues(
@@ -755,13 +741,14 @@ Page<RecordPageData, RecordPageCustom>({
               extractAnchorValues(this.data.fieldViews)
             ),
             this.data.noteValue
-          )
+          ),
+          this.draftPhotos[0]
         )
       )
 
       enterViewMode(this, updatedItem)
       setFeedback(this, {
-        statusText: '修改已保存，不可变字段保持不变。',
+        statusText: '已保存',
         errorText: '',
       })
     } catch (error) {
@@ -776,14 +763,14 @@ Page<RecordPageData, RecordPageCustom>({
 
     try {
       const shouldDelete = await confirmAction(
-        '删除记录',
-        '删除后会同时移除本地 JSON 和该记录下的照片文件。',
+        '删除',
+        '会同时删除本地照片。',
         '删除'
       )
 
       if (!shouldDelete) {
         setFeedback(this, {
-          statusText: '已取消删除。',
+          statusText: '已取消',
           errorText: '',
         })
         return
@@ -791,7 +778,7 @@ Page<RecordPageData, RecordPageCustom>({
 
       const deletedItemId = this.currentItem.id
 
-      await runBusy(this, '正在删除记录', async () => {
+      await runBusy(this, '删除', async () => {
         await this.runtime.deleteItem(deletedItemId)
       })
 

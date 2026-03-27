@@ -38,7 +38,6 @@ interface RecordsPageData {
   readonly busyText: string
   readonly statusText: string
   readonly errorText: string
-  readonly itemCountText: string
   readonly hasItems: boolean
   readonly items: readonly RecordsItemView[]
   readonly footerNavItems: readonly FooterNavItemView[]
@@ -54,7 +53,7 @@ interface RecordsPageCustom {
   touchStartItemId: string
   onLoad(options: WechatMiniprogram.IAnyObject): Promise<void>
   onShow(): void
-  handleRefreshTap(): Promise<void>
+  onPullDownRefresh(): Promise<void>
   handleCardTouchStart(event: ItemTouchEvent): void
   handleCardTouchEnd(event: ItemTouchEvent): void
   handleCardTap(event: ItemTapEvent): Promise<void>
@@ -191,7 +190,6 @@ function syncItemList(
 ): void {
   page.setData({
     hasItems: summaries.length > 0,
-    itemCountText: summaries.length > 0 ? `共 ${summaries.length} 条记录` : '还没有任何记录',
     items: buildItemViews(summaries, page.openSwipeItemId, page.focusItemId),
   })
 }
@@ -286,7 +284,6 @@ Page<RecordsPageData, RecordsPageCustom>({
     busyText: '',
     statusText: '',
     errorText: '',
-    itemCountText: '还没有任何记录',
     hasItems: false,
     items: [],
     footerNavItems: FOOTER_NAV_ITEMS,
@@ -314,7 +311,7 @@ Page<RecordsPageData, RecordsPageCustom>({
 
     try {
       await refreshItems(this, {
-        busyText: '正在读取本地记录',
+        busyText: '读取记录',
       })
 
       this.setData({
@@ -323,7 +320,7 @@ Page<RecordsPageData, RecordsPageCustom>({
 
       if (this.entryState === 'created') {
         setFeedback(this, {
-          statusText: '记录已创建，已回到列表页。',
+          statusText: '已创建',
           errorText: '',
         })
       }
@@ -355,17 +352,22 @@ Page<RecordsPageData, RecordsPageCustom>({
     })
   },
 
-  async handleRefreshTap() {
+  async onPullDownRefresh() {
+    if (!this.data.pageReady) {
+      wx.stopPullDownRefresh()
+      return
+    }
+
     clearFeedback(this)
     this.focusItemId = ''
 
     try {
       await refreshItems(this, {
-        busyText: '正在刷新记录列表',
+        silent: true,
       })
 
       setFeedback(this, {
-        statusText: '记录列表已刷新。',
+        statusText: '已刷新',
         errorText: '',
       })
     } catch (error) {
@@ -374,6 +376,8 @@ Page<RecordsPageData, RecordsPageCustom>({
         statusText: '',
         errorText: `刷新失败：${formatErrorMessage(error)}`,
       })
+    } finally {
+      wx.stopPullDownRefresh()
     }
   },
 
@@ -467,20 +471,20 @@ Page<RecordsPageData, RecordsPageCustom>({
 
     try {
       const shouldDelete = await confirmAction(
-        '删除记录',
-        '删除后会同时移除本地 JSON 和照片文件。',
+        '删除',
+        '会同时删除本地照片。',
         '删除'
       )
 
       if (!shouldDelete) {
         setFeedback(this, {
-          statusText: '已取消删除。',
+          statusText: '已取消',
           errorText: '',
         })
         return
       }
 
-      await runBusy(this, '正在删除记录', async () => {
+      await runBusy(this, '删除', async () => {
         await this.runtime.deleteItem(itemId)
       })
 
@@ -489,7 +493,7 @@ Page<RecordsPageData, RecordsPageCustom>({
       })
 
       setFeedback(this, {
-        statusText: '记录已删除。',
+        statusText: '已删除',
         errorText: '',
       })
     } catch (error) {

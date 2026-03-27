@@ -125,8 +125,8 @@ export function buildFieldViews(
       placeholder:
         fieldDefinition.placeholder ??
         (fieldDefinition.control === 'hybrid'
-          ? `可输入或点选${fieldDefinition.label}`
-          : `请输入${fieldDefinition.label}`),
+          ? `输入或点选${fieldDefinition.label}`
+          : `输入${fieldDefinition.label}`),
       maxLength: fieldDefinition.maxLength ?? DEFAULT_FIELD_MAX_LENGTH,
       suggestions: fieldDefinition.options.map((option) => ({
         value: option.value,
@@ -187,8 +187,8 @@ export function buildLocationPresentation(
   if (!location) {
     return {
       hasLocation: false,
-      title: '尚未选择位置',
-      subtitle: '位置必须通过地图选点确认，不能自动记录。',
+      title: '地图选点',
+      subtitle: '',
       sourceText: '',
     }
   }
@@ -197,8 +197,7 @@ export function buildLocationPresentation(
     hasLocation: true,
     title: location.name,
     subtitle: location.address,
-    sourceText:
-      location.source === 'current' ? '来源：当前位置选点' : '来源：地图手动选点',
+    sourceText: location.source === 'current' ? '当前位置' : '地图选点',
   }
 }
 
@@ -207,26 +206,10 @@ export function buildPhotoPresentation(
   mode: RecordPageMode
 ): PhotoPresentation {
   if (!photo) {
-    if (mode === 'create') {
-      return {
-        hasPhoto: false,
-        photoPath: '',
-        photoMeta: '照片不是必填项；如果现在不拍，创建后仍可以补一张，但补上后不可更换。',
-      }
-    }
-
-    if (mode === 'edit') {
-      return {
-        hasPhoto: false,
-        photoPath: '',
-        photoMeta: '该记录当前没有照片，可在本次编辑阶段补一张；补上后不可更换。',
-      }
-    }
-
     return {
       hasPhoto: false,
       photoPath: '',
-      photoMeta: '当前还没有线索照片。',
+      photoMeta: mode === 'edit' ? '还没有照片，可补一张。' : '还没有照片',
     }
   }
 
@@ -270,15 +253,15 @@ export function buildAnchorDisplayLines(
 }
 
 export function buildSummaryMeta(summary: ItemSummary): string {
-  return `${getSceneLabel(summary.sceneType)} · 更新于 ${formatTimestamp(summary.updatedAt)}`
+  return `更新 ${formatTimestamp(summary.updatedAt)}`
 }
 
 export function buildSummaryAnchorsText(summary: ItemSummary): string {
   return summary.primaryAnchors.length > 0
     ? summary.primaryAnchors.join(' · ')
-    : '还没有补充场景线索'
+    : '暂无线索'
 }
 
 export function buildNoteDisplayText(note: string): string {
-  return trimOptionalString(note) ?? '还没有补充备注。'
+  return trimOptionalString(note) ?? '暂无备注'
 }

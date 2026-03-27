@@ -11,11 +11,13 @@ import {
 
 interface MapApi {
   chooseLocation(option: WechatMiniprogram.ChooseLocationOption): void
+  getLocation(option: WechatMiniprogram.GetLocationOption): void
 }
 
 export interface PickLocationOptions {
   readonly source?: LocationSelectionSource
   readonly initialLocation?: Pick<LocationSnapshot, 'latitude' | 'longitude'>
+  readonly centerOnCurrentLocation?: boolean
 }
 
 function trimOptionalString(value: unknown): string | undefined {
@@ -114,14 +116,27 @@ export class WechatLocationPicker {
     const chooseLocationOptions: WechatMiniprogram.ChooseLocationOption = {}
     const source = options.source ?? 'manual'
 
-    const initialLatitude = normalizeInitialCoordinate(
+    let initialLatitude = normalizeInitialCoordinate(
       options.initialLocation?.latitude,
       'latitude'
     )
-    const initialLongitude = normalizeInitialCoordinate(
+    let initialLongitude = normalizeInitialCoordinate(
       options.initialLocation?.longitude,
       'longitude'
     )
+
+    if (options.centerOnCurrentLocation) {
+      try {
+        const currentLocation = await this.getCurrentLocation()
+        initialLatitude = currentLocation.latitude
+        initialLongitude = currentLocation.longitude
+      } catch {
+        // Best effort only. If current location is unavailable, fall back to the
+        // platform default chooseLocation behavior instead of blocking the flow.
+        initialLatitude = undefined
+        initialLongitude = undefined
+      }
+    }
 
     if (initialLatitude !== undefined) {
       chooseLocationOptions.latitude = initialLatitude
@@ -170,6 +185,27 @@ export class WechatLocationPicker {
         ...option,
         success: (result) => {
           resolve(result)
+        },
+        fail: (error) => {
+          reject(error)
+        },
+      })
+    })
+  }
+
+  private getCurrentLocation(): Promise<Pick<LocationSnapshot, 'latitude' | 'longitude'>> {
+    return new Promise((resolve, reject) => {
+      this.mapApi.getLocation({
+        type: 'gcj02',
+        success: (result) => {
+          try {
+            resolve({
+              latitude: parseCoordinate(result.latitude, 'latitude'),
+              longitude: parseCoordinate(result.longitude, 'longitude'),
+            })
+          } catch (error) {
+            reject(error)
+          }
         },
         fail: (error) => {
           reject(error)
