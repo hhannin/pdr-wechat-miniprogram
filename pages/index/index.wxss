@@ -1,8 +1,18 @@
 .page-shell {
+  min-height: 100vh;
   padding: 28rpx;
   display: flex;
   flex-direction: column;
   gap: 24rpx;
+  background: #000000;
+  color: #00ff88;
+  font-family: monospace;
+}
+
+.page-shell button {
+  background-color: #222;
+  color: #00ff88;
+  border: 1px solid #00ff88;
 }
 
 .hero-card,

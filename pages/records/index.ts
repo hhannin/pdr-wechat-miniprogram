@@ -1,17 +1,13 @@
 import type { ItemSummary } from '../../core/types/index'
 import { frontendRuntime, type DebugRuntime } from '../common/runtime'
 import {
-  buildSummaryAnchorsText,
-  buildSummaryMeta,
-  buildNoteDisplayText,
-  getSceneLabel,
+  formatSummaryTimestamp,
   trimOptionalString,
 } from '../common/frontend-presenters'
 import {
   buildRecordDetailUrl,
   FRONTEND_PRIMARY_NAV,
   type FrontendPrimaryNavItem,
-  type RecordsPageEntryState,
 } from '../index/frontend-config'
 
 interface FooterNavItemView extends FrontendPrimaryNavItem {
@@ -20,16 +16,19 @@ interface FooterNavItemView extends FrontendPrimaryNavItem {
 
 interface RecordsItemView {
   readonly id: string
-  readonly sceneLabel: string
   readonly title: string
   readonly subtitle: string
-  readonly meta: string
-  readonly anchorsText: string
-  readonly noteText: string
+  readonly timestampText: string
   readonly coverPhotoPath: string
   readonly hasPhoto: boolean
   readonly isSwipeOpen: boolean
   readonly isHighlighted: boolean
+}
+
+interface RecordsGroupView {
+  readonly key: string
+  readonly title: string
+  readonly items: readonly RecordsItemView[]
 }
 
 interface RecordsPageData {
@@ -39,15 +38,15 @@ interface RecordsPageData {
   readonly statusText: string
   readonly errorText: string
   readonly hasItems: boolean
-  readonly items: readonly RecordsItemView[]
+  readonly groups: readonly RecordsGroupView[]
   readonly footerNavItems: readonly FooterNavItemView[]
 }
 
 interface RecordsPageCustom {
   readonly runtime: DebugRuntime
+  summaries: readonly ItemSummary[]
   openSwipeItemId: string
   focusItemId: string
-  entryState?: RecordsPageEntryState
   touchStartX: number
   touchStartY: number
   touchStartItemId: string
@@ -89,29 +88,72 @@ const FOOTER_NAV_ITEMS: readonly FooterNavItemView[] = FRONTEND_PRIMARY_NAV.map(
   isActive: navItem.key === 'records',
 }))
 
-function setFeedback(
-  page: RecordsPageInstance,
-  nextState: {
-    readonly statusText?: string
-    readonly errorText?: string
-  }
-): void {
-  page.setData({
-    statusText: nextState.statusText ?? page.data.statusText,
-    errorText: nextState.errorText ?? page.data.errorText,
-  })
+function formatDateKey(timestampMs: number): string {
+  const date = new Date(timestampMs)
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+
+  return `${year}-${month}-${day}`
 }
 
-function clearFeedback(page: RecordsPageInstance): void {
-  page.setData({
-    statusText: '',
-    errorText: '',
+function isSameCalendarDay(left: Date, right: Date): boolean {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  )
+}
+
+function buildGroupTitle(timestampMs: number): string {
+  const date = new Date(timestampMs)
+  const fullDate = formatDateKey(timestampMs)
+  const today = new Date()
+  const yesterday = new Date(today.getTime())
+  yesterday.setDate(today.getDate() - 1)
+
+  if (isSameCalendarDay(date, today)) {
+    return `${fullDate} 今天`
+  }
+
+  if (isSameCalendarDay(date, yesterday)) {
+    return `${fullDate} 昨天`
+  }
+
+  return fullDate
+}
+
+function showToastMessage(
+  title: string,
+  icon: WechatMiniprogram.ShowToastOption['icon'] = 'none'
+): void {
+  wx.showToast({
+    title,
+    icon,
+    duration: 1800,
   })
 }
 
 function formatErrorMessage(error: unknown): string {
+  const sanitizeUserFacingMessage = (message: string): string => {
+    const trimmedMessage = message.trim()
+    if (trimmedMessage.length === 0) {
+      return '发生未知错误。'
+    }
+
+    if (/Item\s+"[^"]+"\s+does not exist\./.test(trimmedMessage)) {
+      return '记录不存在或已删除。'
+    }
+
+    if (/wxfile:\/\//i.test(trimmedMessage) || /\/Users\//.test(trimmedMessage)) {
+      return '本地文件处理失败，请重试。'
+    }
+
+    return trimmedMessage
+  }
+
   if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message.trim()
+    return sanitizeUserFacingMessage(error.message)
   }
 
   if (
@@ -120,7 +162,7 @@ function formatErrorMessage(error: unknown): string {
     'message' in error &&
     typeof (error as { readonly message?: unknown }).message === 'string'
   ) {
-    return (error as { readonly message: string }).message.trim()
+    return sanitizeUserFacingMessage((error as { readonly message: string }).message)
   }
 
   return '发生未知错误。'
@@ -160,37 +202,53 @@ function readQueryString(
   return trimOptionalString(options[key])
 }
 
-function isRecordsPageEntryState(value: string): value is RecordsPageEntryState {
-  return value === 'created'
+function buildItemView(
+  summary: ItemSummary,
+  openSwipeItemId: string,
+  focusItemId: string
+): RecordsItemView {
+  return {
+    id: summary.id,
+    title: summary.locationName,
+    subtitle: summary.address,
+    timestampText: formatSummaryTimestamp(summary),
+    coverPhotoPath: summary.coverPhotoPath ?? '',
+    hasPhoto: typeof summary.coverPhotoPath === "string" && summary.coverPhotoPath.length > 0,
+    isSwipeOpen: summary.id === openSwipeItemId,
+    isHighlighted: summary.id === focusItemId,
+  }
 }
 
-function buildItemViews(
+function buildGroupViews(
   summaries: readonly ItemSummary[],
   openSwipeItemId: string,
   focusItemId: string
-): readonly RecordsItemView[] {
-  return summaries.map((summary) => ({
-    id: summary.id,
-    sceneLabel: getSceneLabel(summary.sceneType),
-    title: summary.locationName,
-    subtitle: summary.address,
-    meta: buildSummaryMeta(summary),
-    anchorsText: buildSummaryAnchorsText(summary),
-    noteText: buildNoteDisplayText(summary.notePreview),
-    coverPhotoPath: summary.coverPhotoPath ?? '',
-    hasPhoto: typeof summary.coverPhotoPath === 'string' && summary.coverPhotoPath.length > 0,
-    isSwipeOpen: summary.id === openSwipeItemId,
-    isHighlighted: summary.id === focusItemId,
+): readonly RecordsGroupView[] {
+  const groups = new Map<string, RecordsItemView[]>()
+  const titles = new Map<string, string>()
+
+  for (const summary of summaries) {
+    const groupKey = formatDateKey(summary.createdAt)
+    const items = groups.get(groupKey) ?? []
+    items.push(buildItemView(summary, openSwipeItemId, focusItemId))
+    groups.set(groupKey, items)
+
+    if (!titles.has(groupKey)) {
+      titles.set(groupKey, buildGroupTitle(summary.createdAt))
+    }
+  }
+
+  return Array.from(groups.entries()).map(([key, items]) => ({
+    key,
+    title: titles.get(key) ?? key,
+    items,
   }))
 }
 
-function syncItemList(
-  page: RecordsPageInstance,
-  summaries: readonly ItemSummary[]
-): void {
+function syncItemGroups(page: RecordsPageInstance): void {
   page.setData({
-    hasItems: summaries.length > 0,
-    items: buildItemViews(summaries, page.openSwipeItemId, page.focusItemId),
+    hasItems: page.summaries.length > 0,
+    groups: buildGroupViews(page.summaries, page.openSwipeItemId, page.focusItemId),
   })
 }
 
@@ -200,12 +258,7 @@ function closeSwipeActions(page: RecordsPageInstance): void {
   }
 
   page.openSwipeItemId = ''
-  page.setData({
-    items: page.data.items.map((item) => ({
-      ...item,
-      isSwipeOpen: false,
-    })),
-  })
+  syncItemGroups(page)
 }
 
 function openSwipeActions(page: RecordsPageInstance, itemId: string): void {
@@ -214,12 +267,7 @@ function openSwipeActions(page: RecordsPageInstance, itemId: string): void {
   }
 
   page.openSwipeItemId = itemId
-  page.setData({
-    items: page.data.items.map((item) => ({
-      ...item,
-      isSwipeOpen: item.id === itemId,
-    })),
-  })
+  syncItemGroups(page)
 }
 
 async function runBusy<T>(
@@ -250,7 +298,10 @@ async function refreshItems(
   } = {}
 ): Promise<void> {
   const loadSummaries = async (): Promise<void> => {
-    const summaries = await page.runtime.listRecent(100)
+    const summaries = (await page.runtime.listRecent(100))
+      .slice()
+      .sort((left, right) => right.createdAt - left.createdAt)
+    page.summaries = summaries
 
     if (page.openSwipeItemId) {
       const hasOpenItem = summaries.some((summary) => summary.id === page.openSwipeItemId)
@@ -266,7 +317,7 @@ async function refreshItems(
       }
     }
 
-    syncItemList(page, summaries)
+    syncItemGroups(page)
   }
 
   if (options.silent) {
@@ -285,30 +336,21 @@ Page<RecordsPageData, RecordsPageCustom>({
     statusText: '',
     errorText: '',
     hasItems: false,
-    items: [],
+    groups: [],
     footerNavItems: FOOTER_NAV_ITEMS,
   },
 
   runtime: frontendRuntime,
+  summaries: [],
   openSwipeItemId: '',
   focusItemId: '',
-  entryState: undefined,
   touchStartX: 0,
   touchStartY: 0,
   touchStartItemId: '',
 
   async onLoad(options) {
     const focusItemId = readQueryString(options, 'focusItemId')
-    const entryStateValue = readQueryString(options, 'entryState')
-
     this.focusItemId = focusItemId ?? ''
-    this.entryState =
-      entryStateValue && isRecordsPageEntryState(entryStateValue)
-        ? entryStateValue
-        : undefined
-
-    clearFeedback(this)
-
     try {
       await refreshItems(this, {
         busyText: '读取记录',
@@ -317,19 +359,9 @@ Page<RecordsPageData, RecordsPageCustom>({
       this.setData({
         pageReady: true,
       })
-
-      if (this.entryState === 'created') {
-        setFeedback(this, {
-          statusText: '已创建',
-          errorText: '',
-        })
-      }
     } catch (error) {
       console.error(error)
-      setFeedback(this, {
-        statusText: '',
-        errorText: `加载记录失败：${formatErrorMessage(error)}`,
-      })
+      showToastMessage(`加载记录失败：${formatErrorMessage(error)}`)
       this.setData({
         pageReady: true,
       })
@@ -345,10 +377,7 @@ Page<RecordsPageData, RecordsPageCustom>({
       silent: true,
     }).catch((error) => {
       console.error(error)
-      setFeedback(this, {
-        statusText: '',
-        errorText: `刷新记录失败：${formatErrorMessage(error)}`,
-      })
+      showToastMessage(`刷新记录失败：${formatErrorMessage(error)}`)
     })
   },
 
@@ -358,24 +387,15 @@ Page<RecordsPageData, RecordsPageCustom>({
       return
     }
 
-    clearFeedback(this)
     this.focusItemId = ''
 
     try {
       await refreshItems(this, {
         silent: true,
       })
-
-      setFeedback(this, {
-        statusText: '已刷新',
-        errorText: '',
-      })
     } catch (error) {
       console.error(error)
-      setFeedback(this, {
-        statusText: '',
-        errorText: `刷新失败：${formatErrorMessage(error)}`,
-      })
+      showToastMessage(`刷新失败：${formatErrorMessage(error)}`)
     } finally {
       wx.stopPullDownRefresh()
     }
@@ -426,17 +446,13 @@ Page<RecordsPageData, RecordsPageCustom>({
       return
     }
 
-    clearFeedback(this)
     this.focusItemId = ''
 
     try {
       await navigateTo(buildRecordDetailUrl(itemId, 'view'))
     } catch (error) {
       console.error(error)
-      setFeedback(this, {
-        statusText: '',
-        errorText: `打开记录失败：${formatErrorMessage(error)}`,
-      })
+      showToastMessage(`打开记录失败：${formatErrorMessage(error)}`)
     }
   },
 
@@ -453,10 +469,7 @@ Page<RecordsPageData, RecordsPageCustom>({
       await navigateTo(buildRecordDetailUrl(itemId, 'edit'))
     } catch (error) {
       console.error(error)
-      setFeedback(this, {
-        statusText: '',
-        errorText: `打开编辑页失败：${formatErrorMessage(error)}`,
-      })
+      showToastMessage(`打开编辑页失败：${formatErrorMessage(error)}`)
     }
   },
 
@@ -470,17 +483,9 @@ Page<RecordsPageData, RecordsPageCustom>({
     this.focusItemId = ''
 
     try {
-      const shouldDelete = await confirmAction(
-        '删除',
-        '会同时删除本地照片。',
-        '删除'
-      )
+      const shouldDelete = await confirmAction('删除', '会同时删除本地照片。', '删除')
 
       if (!shouldDelete) {
-        setFeedback(this, {
-          statusText: '已取消',
-          errorText: '',
-        })
         return
       }
 
@@ -491,17 +496,9 @@ Page<RecordsPageData, RecordsPageCustom>({
       await refreshItems(this, {
         silent: true,
       })
-
-      setFeedback(this, {
-        statusText: '已删除',
-        errorText: '',
-      })
     } catch (error) {
       console.error(error)
-      setFeedback(this, {
-        statusText: '',
-        errorText: `删除失败：${formatErrorMessage(error)}`,
-      })
+      showToastMessage(`删除失败：${formatErrorMessage(error)}`)
     }
   },
 })

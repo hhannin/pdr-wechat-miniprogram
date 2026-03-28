@@ -10,7 +10,6 @@
 }
 
 .empty-card,
-.status-card,
 .record-card,
 .loading-card {
   position: relative;
@@ -22,34 +21,11 @@
 }
 
 .empty-desc,
-.status-line,
 .record-subtitle,
-.record-anchors,
-.record-note,
-.record-meta {
+.record-time {
   font-size: 25rpx;
   line-height: 1.7;
   color: rgba(34, 60, 43, 0.68);
-}
-
-.status-card {
-  margin-top: 22rpx;
-  padding: 22rpx 24rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-}
-
-.status-busy {
-  color: #6a7d96;
-}
-
-.status-success {
-  color: #20563a;
-}
-
-.status-error {
-  color: #8c3340;
 }
 
 .empty-card {
@@ -66,13 +42,27 @@
   margin-top: 12rpx;
   display: flex;
   flex-direction: column;
-  gap: 18rpx;
+  gap: 26rpx;
+}
+
+.records-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.records-group-title {
+  padding: 0 6rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: rgba(34, 60, 43, 0.82);
 }
 
 .record-row {
   position: relative;
   overflow: hidden;
   border-radius: 32rpx;
+  min-height: 204rpx;
 }
 
 .record-actions {
@@ -84,6 +74,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   z-index: 1;
+  min-height: 204rpx;
 }
 
 .record-action {
@@ -115,7 +106,9 @@
   display: block;
   position: relative;
   z-index: 2;
-  padding: 34rpx 28rpx 30rpx;
+  padding: 22rpx;
+  min-height: 204rpx;
+  box-sizing: border-box;
   transition: transform 180ms ease;
 }
 
@@ -130,49 +123,78 @@
     0 0 0 2rpx rgba(31, 106, 70, 0.08);
 }
 
-.record-photo {
+.record-card-layout {
+  display: flex;
+  align-items: stretch;
+  gap: 20rpx;
+  min-height: 160rpx;
+}
+
+.record-thumb {
+  flex: 0 0 160rpx;
+  width: 160rpx;
+  min-height: 160rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  background: rgba(244, 239, 229, 0.82);
+  border: 1px solid rgba(34, 60, 43, 0.08);
+}
+
+.record-photo,
+.record-photo-empty {
   width: 100%;
-  height: 220rpx;
-  border-radius: 22rpx;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.record-photo {
   display: block;
 }
 
-.record-body {
-  margin-top: 18rpx;
+.record-photo-empty {
+  color: rgba(34, 60, 43, 0.44);
+  font-size: 24rpx;
+  letter-spacing: 2rpx;
 }
 
-.record-head {
+.record-body {
+  flex: 1;
+  min-width: 0;
+  min-height: 160rpx;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
-}
-
-.record-scene {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  padding: 8rpx 14rpx;
-  border-radius: 999rpx;
-  background: rgba(31, 106, 70, 0.12);
-  color: #174f35;
-  font-size: 22rpx;
+  justify-content: flex-start;
 }
 
 .record-title {
-  margin-top: 12rpx;
-  font-size: 34rpx;
-  line-height: 1.3;
+  font-size: 30rpx;
+  line-height: 40rpx;
+  min-height: 80rpx;
   font-weight: 700;
   color: #223c2b;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .record-subtitle {
-  margin-top: 8rpx;
+  margin-top: 4rpx;
+  font-size: 24rpx;
+  line-height: 34rpx;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
 }
 
-.record-anchors,
-.record-note {
-  margin-top: 12rpx;
+.record-time {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  line-height: 34rpx;
+  white-space: nowrap;
 }
 
 .empty-card {

@@ -70,18 +70,6 @@ export function trimOptionalString(value: unknown): string | undefined {
   return trimmedValue.length > 0 ? trimmedValue : undefined
 }
 
-function formatByteLength(byteLength: number | undefined): string | undefined {
-  if (typeof byteLength !== 'number' || !Number.isFinite(byteLength) || byteLength <= 0) {
-    return undefined
-  }
-
-  if (byteLength < 1024) {
-    return `${byteLength} B`
-  }
-
-  return `${(byteLength / 1024).toFixed(1)} KB`
-}
-
 export function getSceneLabel(sceneType: SceneType): string {
   return getSceneDefinition(sceneType).label
 }
@@ -203,28 +191,20 @@ export function buildLocationPresentation(
 
 export function buildPhotoPresentation(
   photo: PhotoAsset | undefined,
-  mode: RecordPageMode
+  _mode: RecordPageMode
 ): PhotoPresentation {
   if (!photo) {
     return {
       hasPhoto: false,
       photoPath: '',
-      photoMeta: mode === 'edit' ? '还没有照片，可补一张。' : '还没有照片',
+      photoMeta: '',
     }
   }
-
-  const photoMetaParts = [
-    trimOptionalString(photo.fileName),
-    formatByteLength(photo.byteLength),
-    typeof photo.width === 'number' && typeof photo.height === 'number'
-      ? `${photo.width} × ${photo.height}`
-      : undefined,
-  ].filter((value): value is string => typeof value === 'string' && value.length > 0)
 
   return {
     hasPhoto: true,
     photoPath: photo.localPath,
-    photoMeta: photoMetaParts.join(' · '),
+    photoMeta: '',
   }
 }
 
@@ -254,6 +234,10 @@ export function buildAnchorDisplayLines(
 
 export function buildSummaryMeta(summary: ItemSummary): string {
   return `更新 ${formatTimestamp(summary.updatedAt)}`
+}
+
+export function formatSummaryTimestamp(summary: ItemSummary): string {
+  return formatTimestamp(summary.createdAt)
 }
 
 export function buildSummaryAnchorsText(summary: ItemSummary): string {

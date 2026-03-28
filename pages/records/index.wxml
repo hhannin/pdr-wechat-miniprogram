@@ -1,55 +1,49 @@
 <view class="page-shell">
-  <view class="status-card" wx:if="{{busy || statusText || errorText}}">
-    <view class="status-line status-busy" wx:if="{{busy}}">
-      {{busyText}}
-    </view>
-    <view class="status-line status-success" wx:if="{{statusText}}">
-      {{statusText}}
-    </view>
-    <view class="status-line status-error" wx:if="{{errorText}}">
-      {{errorText}}
-    </view>
-  </view>
-
   <view class="records-list" wx:if="{{pageReady && hasItems}}">
-    <block wx:for="{{items}}" wx:key="id" wx:for-item="item">
-      <view class="record-row">
-        <view class="record-actions">
-          <view
-            class="record-action record-action-edit {{item.isSwipeOpen ? 'record-action-visible' : ''}}"
-            catchtap="handleEditTap"
-            data-item-id="{{item.id}}"
-          >
-            编辑
-          </view>
-          <view
-            class="record-action record-action-delete {{item.isSwipeOpen ? 'record-action-visible' : ''}}"
-            catchtap="handleDeleteTap"
-            data-item-id="{{item.id}}"
-          >
-            删除
-          </view>
-        </view>
+    <block wx:for="{{groups}}" wx:key="key" wx:for-item="group">
+      <view class="records-group">
+        <view class="records-group-title">{{group.title}}</view>
 
-        <view
-          class="record-card {{item.isSwipeOpen ? 'record-card-open' : ''}} {{item.isHighlighted ? 'record-card-highlighted' : ''}}"
-          data-item-id="{{item.id}}"
-          bindtap="handleCardTap"
-          bindtouchstart="handleCardTouchStart"
-          bindtouchend="handleCardTouchEnd"
-        >
-          <image wx:if="{{item.hasPhoto}}" class="record-photo" src="{{item.coverPhotoPath}}" mode="aspectFill" />
-          <view class="record-body">
-            <view class="record-head">
-              <view class="record-scene">{{item.sceneLabel}}</view>
-              <view class="record-meta">{{item.meta}}</view>
+        <block wx:for="{{group.items}}" wx:key="id" wx:for-item="item">
+          <view class="record-row">
+            <view class="record-actions">
+              <view
+                class="record-action record-action-edit {{item.isSwipeOpen ? 'record-action-visible' : ''}}"
+                catchtap="handleEditTap"
+                data-item-id="{{item.id}}"
+              >
+                编辑
+              </view>
+              <view
+                class="record-action record-action-delete {{item.isSwipeOpen ? 'record-action-visible' : ''}}"
+                catchtap="handleDeleteTap"
+                data-item-id="{{item.id}}"
+              >
+                删除
+              </view>
             </view>
-            <view class="record-title">{{item.title}}</view>
-            <view class="record-subtitle">{{item.subtitle}}</view>
-            <view class="record-anchors">{{item.anchorsText}}</view>
-            <view class="record-note">{{item.noteText}}</view>
+
+            <view
+              class="record-card {{item.isSwipeOpen ? 'record-card-open' : ''}} {{item.isHighlighted ? 'record-card-highlighted' : ''}}"
+              data-item-id="{{item.id}}"
+              bindtap="handleCardTap"
+              bindtouchstart="handleCardTouchStart"
+              bindtouchend="handleCardTouchEnd"
+            >
+              <view class="record-card-layout">
+                <view class="record-thumb">
+                  <image wx:if="{{item.hasPhoto}}" class="record-photo" src="{{item.coverPhotoPath}}" mode="aspectFill" />
+                  <view wx:else class="record-photo-empty">无照片</view>
+                </view>
+                <view class="record-body">
+                  <view class="record-title">{{item.title}}</view>
+                  <view class="record-subtitle">{{item.subtitle}}</view>
+                  <view class="record-time">{{item.timestampText}}</view>
+                </view>
+              </view>
+            </view>
           </view>
-        </view>
+        </block>
       </view>
     </block>
   </view>
