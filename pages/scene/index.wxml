@@ -4,6 +4,7 @@
       <navigator
         class="scene-card"
         url="{{sceneCard.createUrl}}"
+        hover-class="scene-card-pressed"
       >
         <view class="scene-card-head">
           <view class="scene-card-kicker">{{sceneCard.eyebrow}}</view>
@@ -21,6 +22,7 @@
         class="footer-nav-item {{navItem.isActive ? 'footer-nav-item-active' : ''}}"
         url="{{navItem.path}}"
         open-type="redirect"
+        hover-class="footer-nav-item-pressed"
       >
         <view class="footer-nav-label">{{navItem.label}}</view>
       </navigator>

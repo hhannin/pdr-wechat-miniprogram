@@ -52,7 +52,12 @@
 }
 
 .records-group-title {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   padding: 0 6rpx;
+  margin: 0 -4rpx;
+  background: linear-gradient(180deg, rgba(244, 239, 229, 0.96), rgba(244, 239, 229, 0.82));
   font-size: 28rpx;
   font-weight: 700;
   color: rgba(34, 60, 43, 0.82);
@@ -121,6 +126,10 @@
   box-shadow:
     0 22rpx 54rpx rgba(49, 42, 27, 0.1),
     0 0 0 2rpx rgba(31, 106, 70, 0.08);
+}
+
+.record-card-pressed {
+  opacity: 0.96;
 }
 
 .record-card-layout {
@@ -272,7 +281,9 @@
   position: fixed;
   left: 28rpx;
   right: 28rpx;
+  bottom: calc(constant(safe-area-inset-bottom) + 28rpx);
   bottom: 28rpx;
+  bottom: calc(env(safe-area-inset-bottom) + 28rpx);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16rpx;
@@ -293,6 +304,10 @@
 
 .footer-nav-item-active {
   background: linear-gradient(135deg, rgba(31, 106, 70, 0.12), rgba(199, 141, 63, 0.12));
+}
+
+.footer-nav-item-pressed {
+  transform: translateY(1rpx);
 }
 
 .footer-nav-label {

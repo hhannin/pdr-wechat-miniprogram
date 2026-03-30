@@ -1,7 +1,7 @@
 <view class="page-shell" wx:if="{{pageReady}}">
   <view class="record-strip">
     <view class="record-chip">{{sceneLabel}}</view>
-    <view class="record-chip record-chip-muted">{{isCreateMode ? '新建' : isEditMode ? '编辑' : '查看'}}</view>
+    <view class="record-chip record-chip-muted">{{isCreateMode ? '记下' : isEditMode ? '补充' : '已记'}}</view>
   </view>
 
   <view class="section-card photo-card">
@@ -69,21 +69,16 @@
     </view>
   </view>
 
-  <view class="section-card" wx:if="{{fieldViews.length > 0}}">
-    <view class="section-head">
-      <view class="section-title">线索</view>
-    </view>
-
+  <view class="section-card" wx:if="{{fieldViews.length > 0 && (!isViewMode || hasFilledFields)}}">
     <block wx:for="{{fieldViews}}" wx:key="key" wx:for-item="fieldView">
-      <view class="field-block">
+      <view class="field-block" wx:if="{{!isViewMode || fieldView.value}}">
         <view class="field-head">
           <view class="field-title">{{fieldView.label}}</view>
-          <view class="field-badge" wx:if="{{fieldView.primary}}">核心</view>
         </view>
 
         <view class="field-static" wx:if="{{isViewMode}}">
           <view class="field-static-value {{fieldView.value ? '' : 'placeholder-text'}}">
-            {{fieldView.displayValue || '暂无'}}
+            {{fieldView.displayValue}}
           </view>
         </view>
 
@@ -117,13 +112,13 @@
     </block>
   </view>
 
-  <view class="section-card">
-    <view class="section-head">
-      <view class="section-title">备注</view>
+  <view class="section-card" wx:if="{{!isViewMode || hasNote}}">
+    <view class="section-head" wx:if="{{!isViewMode}}">
+      <view class="section-title">补充</view>
     </view>
 
     <view class="note-view" wx:if="{{isViewMode}}">
-      <view class="note-text {{noteValue ? '' : 'placeholder-text'}}">{{noteDisplayText}}</view>
+      <view class="note-text">{{noteDisplayText}}</view>
     </view>
 
     <block wx:if="{{!isViewMode}}">
@@ -132,7 +127,7 @@
         auto-height
         maxlength="2000"
         value="{{noteValue}}"
-        placeholder="补一句线索"
+        placeholder="再记一点"
         bindinput="handleNoteInput"
         disabled="{{busy}}"
       />
@@ -147,7 +142,7 @@
         bindtap="handleCreate"
         hover-class="action-button-pressed"
       >
-        {{busy ? '创建中' : '创建'}}
+        {{busy ? '记下中' : '记下'}}
       </view>
     </view>
   </view>
@@ -159,7 +154,7 @@
         bindtap="handleEnterEdit"
         hover-class="action-button-pressed"
       >
-        编辑
+        补充
       </view>
       <view
         class="action-button action-button-danger {{busy ? 'action-button-disabled' : ''}}"
@@ -178,14 +173,14 @@
         bindtap="handleSaveEdit"
         hover-class="action-button-pressed"
       >
-        {{busy ? '保存中' : '保存'}}
+        {{busy ? '存好中' : '存好'}}
       </view>
       <view
         class="action-button action-button-secondary {{busy ? 'action-button-disabled' : ''}}"
         bindtap="handleCancelEdit"
         hover-class="action-button-pressed"
       >
-        取消
+        返回
       </view>
     </view>
   </view>

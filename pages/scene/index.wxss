@@ -39,6 +39,11 @@
   display: block;
   min-height: 188rpx;
   padding: 30rpx 28rpx;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.scene-card-pressed {
+  transform: translateY(2rpx);
 }
 
 .scene-card-head {
@@ -79,7 +84,9 @@
   position: fixed;
   left: 28rpx;
   right: 28rpx;
+  bottom: calc(constant(safe-area-inset-bottom) + 28rpx);
   bottom: 28rpx;
+  bottom: calc(env(safe-area-inset-bottom) + 28rpx);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16rpx;
@@ -100,6 +107,10 @@
 
 .footer-nav-item-active {
   background: linear-gradient(135deg, rgba(31, 106, 70, 0.12), rgba(199, 141, 63, 0.12));
+}
+
+.footer-nav-item-pressed {
+  transform: translateY(1rpx);
 }
 
 .footer-nav-label {

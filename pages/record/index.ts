@@ -41,6 +41,8 @@ interface RecordPageData {
   readonly noteValue: string
   readonly noteLength: number
   readonly noteDisplayText: string
+  readonly hasNote: boolean
+  readonly hasFilledFields: boolean
   readonly hasLocation: boolean
   readonly locationTitle: string
   readonly locationSubtitle: string
@@ -103,14 +105,14 @@ const DEFAULT_SCENE_TYPE: SceneType = 'default'
 
 function resolveNavigationTitle(mode: RecordPageMode, sceneLabel: string): string {
   if (mode === 'create') {
-    return `新建${sceneLabel}`
+    return `记下${sceneLabel}`
   }
 
   if (mode === 'edit') {
-    return `编辑${sceneLabel}`
+    return `补充${sceneLabel}`
   }
 
-  return `查看${sceneLabel}`
+  return sceneLabel
 }
 
 function syncNavigationTitle(mode: RecordPageMode, sceneLabel: string): void {
@@ -137,6 +139,9 @@ function syncRecordState(
   const locationPresentation = buildLocationPresentation(getActiveLocation(page))
   const photoPresentation = buildPhotoPresentation(getActivePhoto(page), mode)
   const sceneLabel = getSceneLabel(sceneType)
+  const nextFieldViews = buildFieldViews(sceneType, anchorValues)
+  const hasFilledFields = nextFieldViews.some((fieldView) => fieldView.value.trim().length > 0)
+  const hasNote = note.trim().length > 0
 
   syncNavigationTitle(mode, sceneLabel)
 
@@ -147,10 +152,12 @@ function syncRecordState(
     isEditMode: mode === 'edit',
     sceneType,
     sceneLabel,
-    fieldViews: buildFieldViews(sceneType, anchorValues),
+    fieldViews: nextFieldViews,
     noteValue: note,
     noteLength: note.length,
     noteDisplayText: buildNoteDisplayText(note),
+    hasNote,
+    hasFilledFields,
     hasLocation: locationPresentation.hasLocation,
     locationTitle: locationPresentation.title,
     locationSubtitle: locationPresentation.subtitle,
@@ -401,7 +408,9 @@ const initialData: RecordPageData = {
   fieldViews: buildFieldViews(DEFAULT_SCENE_TYPE, {}),
   noteValue: '',
   noteLength: 0,
-  noteDisplayText: '暂无备注',
+  noteDisplayText: '',
+  hasNote: false,
+  hasFilledFields: false,
   hasLocation: false,
   locationTitle: '地图选点',
   locationSubtitle: '',
@@ -534,16 +543,16 @@ Page<RecordPageData, RecordPageCustom>({
       )
 
       this.draftPhotos = [photo]
-        syncRecordState(
-          this,
-          'edit',
-          this.currentItem.sceneType,
-          extractAnchorValues(this.data.fieldViews),
-          this.data.noteValue
-        )
-      } catch (error) {
-        await handleAsyncError(this, error, '补充照片失败：')
-      }
+      syncRecordState(
+        this,
+        'edit',
+        this.currentItem.sceneType,
+        extractAnchorValues(this.data.fieldViews),
+        this.data.noteValue
+      )
+    } catch (error) {
+      await handleAsyncError(this, error, '补充照片失败：')
+    }
   },
 
   handleClearDraftPhoto() {
@@ -697,7 +706,7 @@ Page<RecordPageData, RecordPageCustom>({
     }
 
     if (!this.currentItem || !this.data.isEditMode) {
-      showToastMessage('暂无可保存内容')
+      showToastMessage('还没改动')
       return
     }
 
@@ -733,9 +742,9 @@ Page<RecordPageData, RecordPageCustom>({
 
     try {
       const shouldDelete = await confirmAction(
-        '删除',
-        '会同时删除本地照片。',
-        '删除'
+        '删掉这条？',
+        '照片也会一起删掉。',
+        '删掉'
       )
 
       if (!shouldDelete) {

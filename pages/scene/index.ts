@@ -34,7 +34,7 @@ const SCENE_COPY: Readonly<
 > = {
   default: {
     eyebrow: '自由记录',
-    summary: '只写备注',
+    summary: '照片 / 位置 / 补充',
   },
   parking_lot: {
     eyebrow: '最后50m',
@@ -49,7 +49,7 @@ const SCENE_COPY: Readonly<
     summary: '楼层 / 诊室 / 设施',
   },
   scenic_area: {
-    eyebrow: '路径线索',
+    eyebrow: '沿路找回',
     summary: '大门 / 设施 / 标识',
   },
 }
@@ -60,7 +60,7 @@ const SCENE_CARDS: readonly SceneCardView[] = listSceneDefinitions().map((sceneD
   return {
     sceneType: sceneDefinition.type,
     label: sceneDefinition.label,
-    eyebrow: sceneCopy?.eyebrow ?? '地点记录',
+    eyebrow: sceneCopy?.eyebrow ?? '记这里',
     summary: sceneCopy?.summary ?? sceneDefinition.description,
     createUrl: buildCreateRecordUrl(sceneDefinition.type),
   }

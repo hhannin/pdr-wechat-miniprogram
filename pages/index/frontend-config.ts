@@ -22,13 +22,13 @@ export interface FrontendPrimaryNavItem {
 export const FRONTEND_PRIMARY_NAV: readonly FrontendPrimaryNavItem[] = Object.freeze([
   {
     key: 'scene',
-    label: '新建',
+    label: '记这里',
     subtitle: '',
     path: FRONTEND_ROUTES.scene,
   },
   {
     key: 'records',
-    label: '记录',
+    label: '找回去',
     subtitle: '',
     path: FRONTEND_ROUTES.records,
   },

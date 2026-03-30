@@ -213,7 +213,7 @@ function buildItemView(
     subtitle: summary.address,
     timestampText: formatSummaryTimestamp(summary),
     coverPhotoPath: summary.coverPhotoPath ?? '',
-    hasPhoto: typeof summary.coverPhotoPath === "string" && summary.coverPhotoPath.length > 0,
+    hasPhoto: typeof summary.coverPhotoPath === 'string' && summary.coverPhotoPath.length > 0,
     isSwipeOpen: summary.id === openSwipeItemId,
     isHighlighted: summary.id === focusItemId,
   }
@@ -483,7 +483,7 @@ Page<RecordsPageData, RecordsPageCustom>({
     this.focusItemId = ''
 
     try {
-      const shouldDelete = await confirmAction('删除', '会同时删除本地照片。', '删除')
+      const shouldDelete = await confirmAction('删掉这条？', '照片也会一起删掉。', '删掉')
 
       if (!shouldDelete) {
         return

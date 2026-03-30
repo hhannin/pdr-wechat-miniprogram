@@ -243,9 +243,9 @@ export function formatSummaryTimestamp(summary: ItemSummary): string {
 export function buildSummaryAnchorsText(summary: ItemSummary): string {
   return summary.primaryAnchors.length > 0
     ? summary.primaryAnchors.join(' · ')
-    : '暂无线索'
+    : ''
 }
 
 export function buildNoteDisplayText(note: string): string {
-  return trimOptionalString(note) ?? '暂无备注'
+  return trimOptionalString(note) ?? ''
 }

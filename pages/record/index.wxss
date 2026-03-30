@@ -249,6 +249,19 @@
   gap: 16rpx;
 }
 
+.inline-button {
+  min-width: 220rpx;
+  height: 76rpx;
+  padding: 0 28rpx;
+  border-radius: 999rpx;
+  background: rgba(31, 106, 70, 0.1);
+  border: 1px solid rgba(31, 106, 70, 0.12);
+  color: #214b35;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 76rpx;
+}
+
 .note-input {
   width: 100%;
   min-height: 180rpx;

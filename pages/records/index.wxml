@@ -29,6 +29,7 @@
               bindtap="handleCardTap"
               bindtouchstart="handleCardTouchStart"
               bindtouchend="handleCardTouchEnd"
+              hover-class="record-card-pressed"
             >
               <view class="record-card-layout">
                 <view class="record-thumb">
@@ -54,15 +55,15 @@
       <view class="empty-circle empty-circle-small"></view>
       <view class="empty-card-shape"></view>
     </view>
-    <view class="empty-title">还没有记录</view>
-    <view class="empty-desc">去记一个位置。</view>
+    <view class="empty-title">还没记下位置</view>
+    <view class="empty-desc">去记一个地方。</view>
     <navigator class="empty-action" url="{{footerNavItems[0].path}}" open-type="redirect">
-      去新建
+      去记一个
     </navigator>
   </view>
 
   <view class="loading-card" wx:if="{{!pageReady}}">
-    <view class="loading-title">读取中</view>
+    <view class="loading-title">载入中</view>
   </view>
 
   <view class="footer-nav">
@@ -71,6 +72,7 @@
         class="footer-nav-item {{navItem.isActive ? 'footer-nav-item-active' : ''}}"
         url="{{navItem.path}}"
         open-type="redirect"
+        hover-class="footer-nav-item-pressed"
       >
         <view class="footer-nav-label">{{navItem.label}}</view>
       </navigator>
