@@ -1,5 +1,5 @@
 import type { ItemSummary } from '../../core/types/index'
-import { frontendRuntime, type DebugRuntime } from '../common/runtime'
+import { appRuntime, type AppRuntime } from '../common/runtime'
 import {
   formatSummaryTimestamp,
   trimOptionalString,
@@ -8,7 +8,7 @@ import {
   buildRecordDetailUrl,
   FRONTEND_PRIMARY_NAV,
   type FrontendPrimaryNavItem,
-} from '../index/frontend-config'
+} from '../common/frontend-config'
 
 interface FooterNavItemView extends FrontendPrimaryNavItem {
   readonly isActive: boolean
@@ -43,7 +43,7 @@ interface RecordsPageData {
 }
 
 interface RecordsPageCustom {
-  readonly runtime: DebugRuntime
+  readonly runtime: AppRuntime
   summaries: readonly ItemSummary[]
   openSwipeItemId: string
   focusItemId: string
@@ -340,7 +340,7 @@ Page<RecordsPageData, RecordsPageCustom>({
     footerNavItems: FOOTER_NAV_ITEMS,
   },
 
-  runtime: frontendRuntime,
+  runtime: appRuntime,
   summaries: [],
   openSwipeItemId: '',
   focusItemId: '',
@@ -360,7 +360,6 @@ Page<RecordsPageData, RecordsPageCustom>({
         pageReady: true,
       })
     } catch (error) {
-      console.error(error)
       showToastMessage(`加载记录失败：${formatErrorMessage(error)}`)
       this.setData({
         pageReady: true,
@@ -376,7 +375,6 @@ Page<RecordsPageData, RecordsPageCustom>({
     refreshItems(this, {
       silent: true,
     }).catch((error) => {
-      console.error(error)
       showToastMessage(`刷新记录失败：${formatErrorMessage(error)}`)
     })
   },
@@ -394,7 +392,6 @@ Page<RecordsPageData, RecordsPageCustom>({
         silent: true,
       })
     } catch (error) {
-      console.error(error)
       showToastMessage(`刷新失败：${formatErrorMessage(error)}`)
     } finally {
       wx.stopPullDownRefresh()
@@ -451,7 +448,6 @@ Page<RecordsPageData, RecordsPageCustom>({
     try {
       await navigateTo(buildRecordDetailUrl(itemId, 'view'))
     } catch (error) {
-      console.error(error)
       showToastMessage(`打开记录失败：${formatErrorMessage(error)}`)
     }
   },
@@ -468,7 +464,6 @@ Page<RecordsPageData, RecordsPageCustom>({
     try {
       await navigateTo(buildRecordDetailUrl(itemId, 'edit'))
     } catch (error) {
-      console.error(error)
       showToastMessage(`打开编辑页失败：${formatErrorMessage(error)}`)
     }
   },
@@ -497,7 +492,6 @@ Page<RecordsPageData, RecordsPageCustom>({
         silent: true,
       })
     } catch (error) {
-      console.error(error)
       showToastMessage(`删除失败：${formatErrorMessage(error)}`)
     }
   },

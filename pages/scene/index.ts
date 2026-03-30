@@ -4,7 +4,7 @@ import {
   buildCreateRecordUrl,
   FRONTEND_PRIMARY_NAV,
   type FrontendPrimaryNavItem,
-} from '../index/frontend-config'
+} from '../common/frontend-config'
 
 interface SceneCardView {
   readonly sceneType: SceneType

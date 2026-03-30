@@ -12,7 +12,7 @@ import {
   getSceneFieldDefinitions,
   getSceneFieldOptionLabel,
 } from '../../core/scene/index'
-import type { RecordPageMode } from '../index/frontend-config'
+import type { RecordPageMode } from './frontend-config'
 
 const DEFAULT_FIELD_MAX_LENGTH = 40
 

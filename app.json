@@ -1,12 +1,16 @@
 {
   "pages": [
-    "pages/index/index",
     "pages/scene/index",
     "pages/records/index",
     "pages/record/index"
   ],
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于地图选点和打开已保存地点导航"
+    }
+  },
   "window": {
-    "navigationBarTitleText": "Foots",
+    "navigationBarTitleText": "记这里",
     "navigationBarBackgroundColor": "#f4efe5",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#f4efe5"

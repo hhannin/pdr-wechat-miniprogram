@@ -1,9 +1,6 @@
 import type { SceneType } from '../../core/types/index'
 
-export const USE_NEW_FRONTEND = true
-
 export const FRONTEND_ROUTES = Object.freeze({
-  debug: '/pages/index/index',
   scene: '/pages/scene/index',
   records: '/pages/records/index',
   record: '/pages/record/index',
@@ -34,14 +31,6 @@ export const FRONTEND_PRIMARY_NAV: readonly FrontendPrimaryNavItem[] = Object.fr
   },
 ])
 
-export function getConfiguredFrontendEntryPath(): string {
-  return USE_NEW_FRONTEND ? FRONTEND_ROUTES.scene : FRONTEND_ROUTES.debug
-}
-
-export function isRecordPageMode(value: string): value is RecordPageMode {
-  return value === 'create' || value === 'view' || value === 'edit'
-}
-
 function buildQueryString(params: Readonly<Record<string, string | undefined>>): string {
   const entries = Object.keys(params).reduce((queryEntries, key) => {
     const value = params[key]
@@ -54,6 +43,10 @@ function buildQueryString(params: Readonly<Record<string, string | undefined>>):
   }, [] as string[])
 
   return entries.length > 0 ? `?${entries.join('&')}` : ''
+}
+
+export function isRecordPageMode(value: string): value is RecordPageMode {
+  return value === 'create' || value === 'view' || value === 'edit'
 }
 
 export function buildCreateRecordUrl(sceneType: SceneType): string {

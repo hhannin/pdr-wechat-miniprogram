@@ -9,7 +9,7 @@ import type {
 import { isSceneType, sanitizeSceneFieldValues } from '../../core/scene/index'
 import { isMapError } from '../../infra/map/index'
 import { isMediaError } from '../../infra/media/index'
-import { frontendRuntime, type DebugRuntime } from '../common/runtime'
+import { appRuntime, type AppRuntime } from '../common/runtime'
 import {
   buildFieldViews,
   buildLocationPresentation,
@@ -26,7 +26,7 @@ import {
   FRONTEND_ROUTES,
   isRecordPageMode,
   type RecordPageMode,
-} from '../index/frontend-config'
+} from '../common/frontend-config'
 
 interface RecordPageData {
   readonly pageReady: boolean
@@ -54,7 +54,7 @@ interface RecordPageData {
 }
 
 interface RecordPageCustom {
-  readonly runtime: DebugRuntime
+  readonly runtime: AppRuntime
   currentItem: Item | null
   draftLocation?: LocationSnapshot
   draftPhotos: readonly PhotoAsset[]
@@ -309,7 +309,6 @@ async function handleAsyncError(
     return
   }
 
-  console.error(error)
   await offerOpenSettingIfNeeded(error)
   showToastMessage(`${fallbackMessage}${formatErrorMessage(error)}`)
 }
@@ -424,7 +423,7 @@ const initialData: RecordPageData = {
 Page<RecordPageData, RecordPageCustom>({
   data: initialData,
 
-  runtime: frontendRuntime,
+  runtime: appRuntime,
   currentItem: null,
   draftLocation: undefined,
   draftPhotos: [],
