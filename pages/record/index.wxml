@@ -127,7 +127,7 @@
         auto-height
         maxlength="2000"
         value="{{noteValue}}"
-        placeholder="再记一点"
+        placeholder="再多记一点"
         bindinput="handleNoteInput"
         disabled="{{busy}}"
       />

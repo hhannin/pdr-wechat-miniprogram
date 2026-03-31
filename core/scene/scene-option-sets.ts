@@ -1,4 +1,5 @@
 import type { SceneFieldOption } from '../types'
+import { buildFloorOptions, mergeOptionGroups } from './scene-option-builders'
 
 function createOption(label: string): SceneFieldOption {
   return Object.freeze({
@@ -12,79 +13,62 @@ function createOptionSet(labels: readonly string[]): readonly SceneFieldOption[]
 }
 
 export const SCENIC_GATE_OPTIONS = createOptionSet([
+  '主入口',
   '南门',
   '北门',
   '东门',
   '西门',
-  '主入口',
-  '次入口',
   '检票口',
   '安检口',
-  '栈道入口',
+  '游客中心入口',
   '索道入口',
   '码头入口',
 ])
 
 export const SCENIC_FACILITY_OPTIONS = createOptionSet([
   '卫生间',
+  '游客中心',
+  '咨询台',
   '商店',
   '餐饮点',
-  '自动售卖机',
-  '充电点',
   '饮水点',
+  '自动售卖机',
   '医务点',
-  '咨询台',
   '休息亭',
-  '停车接驳点',
+  '摆渡车点',
 ])
 
 export const SCENIC_PATH_MARKER_OPTIONS = createOptionSet([
   '岔路口',
+  '路牌旁',
+  '观景台',
   '石阶旁',
   '桥边',
-  '路牌旁',
   '亭子旁',
   '雕塑旁',
   '大树旁',
-  '湖边栏杆',
-  '花坛旁',
+  '栈道旁',
   '长椅旁',
 ])
 
-export const COMMON_FLOOR_OPTIONS = createOptionSet([
-  'B3',
-  'B2',
-  'B1',
-  '1F',
-  '2F',
-  '3F',
-  '4F',
-  '5F',
-  '6F',
-  '7F',
-])
+export const COMMON_FLOOR_OPTIONS = mergeOptionGroups(
+  createOptionSet(['LG', 'G']),
+  buildFloorOptions(4, 15)
+)
 
-export const PARKING_FLOOR_OPTIONS = createOptionSet([
-  'B4',
-  'B3',
-  'B2',
-  'B1',
-  '1F',
-  '2F',
-  '3F',
-])
+export const PARKING_FLOOR_OPTIONS = buildFloorOptions(6, 5)
 
 export const MALL_FACILITY_OPTIONS = createOptionSet([
+  '前台',
   '服务台',
-  '卫生间',
-  '扶梯',
   '直梯',
+  '扶梯',
+  '电梯厅',
+  '闸机口',
+  '大厅',
   '出入口',
+  '卫生间',
   '停车场连通口',
-  '儿童区',
-  '影院入口',
-  '超市入口',
-  '餐饮区',
 ])
 
 export const HOSPITAL_FACILITY_OPTIONS = createOptionSet([
@@ -106,6 +90,7 @@ export const PARKING_ZONE_OPTIONS = createOptionSet([
   'C区',
   'D区',
   'E区',
+  'F区',
   '东区',
   '西区',
   '南区',

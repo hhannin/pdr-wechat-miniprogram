@@ -39,7 +39,10 @@
                 <view class="record-body">
                   <view class="record-title">{{item.title}}</view>
                   <view class="record-subtitle">{{item.subtitle}}</view>
-                  <view class="record-time">{{item.timestampText}}</view>
+                  <view class="record-meta">
+                    <view class="record-time">{{item.timestampText}}</view>
+                    <view class="record-scene">{{item.sceneLabel}}</view>
+                  </view>
                 </view>
               </view>
             </view>

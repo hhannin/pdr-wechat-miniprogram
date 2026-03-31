@@ -186,6 +186,11 @@
   color: #223c2b;
 }
 
+.location-title {
+  font-size: 33rpx;
+  line-height: 1.42;
+}
+
 .field-input {
   width: 100%;
   height: 88rpx;

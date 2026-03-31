@@ -42,7 +42,7 @@ const SCENE_COPY: Readonly<
   },
   mall: {
     eyebrow: '室内找回',
-    summary: '楼层 / 店铺 / 设施',
+    summary: '楼层 / 门牌/号牌 / 设施',
   },
   hospital: {
     eyebrow: '诊区找回',

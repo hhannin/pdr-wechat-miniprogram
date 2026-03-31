@@ -2,6 +2,7 @@ import type { ItemSummary } from '../../core/types/index'
 import { appRuntime, type AppRuntime } from '../common/runtime'
 import {
   formatSummaryTimestamp,
+  getSceneLabel,
   trimOptionalString,
 } from '../common/frontend-presenters'
 import {
@@ -19,6 +20,7 @@ interface RecordsItemView {
   readonly title: string
   readonly subtitle: string
   readonly timestampText: string
+  readonly sceneLabel: string
   readonly coverPhotoPath: string
   readonly hasPhoto: boolean
   readonly isSwipeOpen: boolean
@@ -212,6 +214,7 @@ function buildItemView(
     title: summary.locationName,
     subtitle: summary.address,
     timestampText: formatSummaryTimestamp(summary),
+    sceneLabel: getSceneLabel(summary.sceneType),
     coverPhotoPath: summary.coverPhotoPath ?? '',
     hasPhoto: typeof summary.coverPhotoPath === 'string' && summary.coverPhotoPath.length > 0,
     isSwipeOpen: summary.id === openSwipeItemId,

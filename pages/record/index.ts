@@ -284,7 +284,7 @@ async function offerOpenSettingIfNeeded(error: unknown): Promise<void> {
   try {
     const shouldOpenSetting = await confirmAction(
       '需要位置权限',
-      '地图选点需要位置权限，是否立即打开小程序设置？',
+      '开启位置权限后，可更顺畅地选择位置。是否前往设置？',
       '去设置'
     )
 
@@ -411,7 +411,7 @@ const initialData: RecordPageData = {
   hasNote: false,
   hasFilledFields: false,
   hasLocation: false,
-  locationTitle: '地图选点',
+  locationTitle: '选一个位置',
   locationSubtitle: '',
   hasPhoto: false,
   photoPath: '',

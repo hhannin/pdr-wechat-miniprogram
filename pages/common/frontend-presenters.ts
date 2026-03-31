@@ -175,7 +175,7 @@ export function buildLocationPresentation(
   if (!location) {
     return {
       hasLocation: false,
-      title: '地图选点',
+      title: '选一个位置',
       subtitle: '',
       sourceText: '',
     }

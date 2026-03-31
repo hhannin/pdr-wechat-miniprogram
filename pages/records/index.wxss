@@ -206,6 +206,34 @@
   white-space: nowrap;
 }
 
+.record-meta {
+  margin-top: 10rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.record-meta .record-time {
+  margin-top: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.record-scene {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(31, 106, 70, 0.1);
+  color: #1f6a46;
+  font-size: 22rpx;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .empty-card {
   padding: 34rpx 28rpx 30rpx;
 }
