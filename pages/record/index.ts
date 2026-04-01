@@ -527,7 +527,7 @@ Page<RecordPageData, RecordPageCustom>({
     }
 
     if (!this.data.isEditMode || !this.currentItem) {
-      showToastMessage('当前不可补照片')
+      showToastMessage('请先点击补充，再添加照片')
       return
     }
 

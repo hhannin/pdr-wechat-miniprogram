@@ -34,7 +34,7 @@ const SCENE_COPY: Readonly<
 > = {
   default: {
     eyebrow: '自由记录',
-    summary: '照片 / 位置 / 补充',
+    summary: '照片 / 位置 / 备注',
   },
   parking_lot: {
     eyebrow: '最后50m',

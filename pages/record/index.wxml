@@ -114,7 +114,7 @@
 
   <view class="section-card" wx:if="{{!isViewMode || hasNote}}">
     <view class="section-head" wx:if="{{!isViewMode}}">
-      <view class="section-title">补充</view>
+      <view class="section-title">备注</view>
     </view>
 
     <view class="note-view" wx:if="{{isViewMode}}">
