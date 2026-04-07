@@ -99,6 +99,13 @@
   line-height: 1;
 }
 
+.share-flow-hint {
+  margin: -2rpx 4rpx 18rpx;
+  font-size: 23rpx;
+  line-height: 1.6;
+  color: rgba(34, 60, 43, 0.58);
+}
+
 .hero-subtitle,
 .section-desc,
 .field-desc,
@@ -115,43 +122,6 @@
   color: #223c2b;
 }
 
-.share-topbar {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 12rpx;
-  margin-bottom: 18rpx;
-}
-
-.share-topbar-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 10rpx;
-  min-height: 72rpx;
-  color: #214b35;
-}
-
-.share-topbar-action-close {
-  justify-self: end;
-}
-
-.share-topbar-icon {
-  width: 30rpx;
-  height: 30rpx;
-}
-
-.share-topbar-text {
-  font-size: 25rpx;
-  font-weight: 600;
-}
-
-.share-topbar-title {
-  text-align: center;
-  font-size: 29rpx;
-  font-weight: 700;
-  color: #223c2b;
-}
-
 .section-desc {
   margin-top: 8rpx;
 }
@@ -161,6 +131,10 @@
   padding-bottom: 28rpx;
 }
 
+.share-section-head {
+  margin-bottom: 18rpx;
+}
+
 .share-preview-shareid {
   margin-top: 14rpx;
   font-size: 23rpx;
@@ -168,53 +142,10 @@
   color: rgba(34, 60, 43, 0.58);
 }
 
-.share-selection-row {
-  padding: 20rpx 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20rpx;
-}
-
-.share-selection-row + .share-selection-row {
-  border-top: 1px solid rgba(34, 60, 43, 0.06);
-}
-
-.share-selection-row-static {
-  align-items: center;
-}
-
-.share-selection-copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.share-selection-label {
-  font-size: 29rpx;
-  font-weight: 700;
-  line-height: 1.5;
-  color: #223c2b;
-}
-
-.share-selection-value {
-  margin-top: 8rpx;
-  font-size: 25rpx;
-  line-height: 1.6;
-  color: rgba(34, 60, 43, 0.78);
-  word-break: break-all;
-}
-
-.share-selection-helper {
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  line-height: 1.5;
-  color: rgba(34, 60, 43, 0.52);
-}
-
 .share-selection-check {
   flex: 0 0 auto;
-  min-width: 108rpx;
-  padding: 12rpx 16rpx;
+  min-width: 118rpx;
+  padding: 12rpx 18rpx;
   border-radius: 999rpx;
   border: 1px solid rgba(34, 60, 43, 0.1);
   background: rgba(244, 239, 229, 0.76);
@@ -552,4 +483,73 @@
 
 .action-button-native::after {
   border: none;
+}
+
+.action-button-loading {
+  pointer-events: none;
+}
+
+.share-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 24;
+  padding: 44rpx 28rpx calc(env(safe-area-inset-bottom) + 20rpx);
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.share-preview-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(29, 32, 26, 0.3);
+}
+
+.share-preview-modal {
+  position: relative;
+  width: 100%;
+  max-height: calc(100vh - 120rpx);
+  border-radius: 34rpx;
+  overflow: hidden;
+  border: 1px solid rgba(34, 60, 43, 0.08);
+  box-shadow: 0 28rpx 72rpx rgba(44, 38, 27, 0.18);
+  background: rgba(255, 251, 245, 0.98);
+  display: flex;
+  flex-direction: column;
+}
+
+.share-preview-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
+.share-preview-shell {
+  padding: 24rpx 24rpx 18rpx;
+  box-sizing: border-box;
+}
+
+.share-preview-actions {
+  padding: 12rpx;
+  border-top: 1px solid rgba(34, 60, 43, 0.08);
+  background: rgba(255, 251, 245, 0.98);
+}
+
+.share-loading-spinner {
+  width: 34rpx;
+  height: 34rpx;
+  border-radius: 999rpx;
+  border: 4rpx solid rgba(255, 250, 243, 0.38);
+  border-top-color: #fffaf3;
+  animation: share-spin 0.9s linear infinite;
+}
+
+@keyframes share-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
