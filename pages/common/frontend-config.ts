@@ -4,6 +4,7 @@ export const FRONTEND_ROUTES = Object.freeze({
   scene: '/pages/scene/index',
   records: '/pages/records/index',
   record: '/pages/record/index',
+  share: '/pages/share/index',
 })
 
 export type RecordPageMode = 'create' | 'view' | 'edit'
@@ -73,5 +74,11 @@ export function buildRecordsUrl(options: {
   return `${FRONTEND_ROUTES.records}${buildQueryString({
     focusItemId: options.focusItemId,
     entryState: options.entryState,
+  })}`
+}
+
+export function buildShareUrl(shareId: string): string {
+  return `${FRONTEND_ROUTES.share}${buildQueryString({
+    shareId,
   })}`
 }

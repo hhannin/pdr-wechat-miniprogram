@@ -2,14 +2,21 @@ import type {
   Item,
   LocationSnapshot,
   PhotoAsset,
+  PreparedShareSnapshot,
   SceneFieldKey,
   SceneFieldValueMap,
   SceneType,
+  ShareSnapshotSelection,
+  SharedImageState,
+  SharedItem,
 } from '../../core/types/index'
 import { isSceneType, sanitizeSceneFieldValues } from '../../core/scene/index'
 import { isMapError } from '../../infra/map/index'
 import { isMediaError } from '../../infra/media/index'
-import { appRuntime, type AppRuntime } from '../common/runtime'
+import {
+  appRuntime,
+  type AppRuntime,
+} from '../common/runtime'
 import {
   buildFieldViews,
   buildLocationPresentation,
@@ -27,6 +34,26 @@ import {
   isRecordPageMode,
   type RecordPageMode,
 } from '../common/frontend-config'
+
+type ShareStep = 'select' | 'preview'
+type ShareSelectionItemKind = 'photo' | 'field' | 'note'
+
+interface ShareMandatoryItemView {
+  readonly key: 'scene' | 'location'
+  readonly label: string
+  readonly value: string
+  readonly helperText: string
+}
+
+interface ShareSelectionItemView {
+  readonly key: string
+  readonly label: string
+  readonly value: string
+  readonly helperText: string
+  readonly checked: boolean
+  readonly kind: ShareSelectionItemKind
+  readonly fieldKey?: SceneFieldKey
+}
 
 interface RecordPageData {
   readonly pageReady: boolean
@@ -51,6 +78,24 @@ interface RecordPageData {
   readonly canCreate: boolean
   readonly canSave: boolean
   readonly canAttachPhoto: boolean
+  readonly shareFlowVisible: boolean
+  readonly shareStep: ShareStep
+  readonly shareMandatoryItems: readonly ShareMandatoryItemView[]
+  readonly shareSelectionItems: readonly ShareSelectionItemView[]
+  readonly shareHasSelectionItems: boolean
+  readonly sharePreviewShareId: string
+  readonly sharePreviewCardTitle: string
+  readonly sharePreviewCardSubtitle: string
+  readonly sharePreviewFieldViews: readonly FrontendFieldView[]
+  readonly sharePreviewHasFields: boolean
+  readonly sharePreviewHasLocation: boolean
+  readonly sharePreviewLocationTitle: string
+  readonly sharePreviewLocationSubtitle: string
+  readonly sharePreviewHasPhoto: boolean
+  readonly sharePreviewPhotoPath: string
+  readonly sharePreviewImageState: SharedImageState
+  readonly sharePreviewHasNote: boolean
+  readonly sharePreviewNoteText: string
 }
 
 interface RecordPageCustom {
@@ -58,7 +103,9 @@ interface RecordPageCustom {
   currentItem: Item | null
   draftLocation?: LocationSnapshot
   draftPhotos: readonly PhotoAsset[]
+  preparedShare: PreparedShareSnapshot | null
   onLoad(options: WechatMiniprogram.IAnyObject): Promise<void>
+  onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent
   handlePickLocation(): Promise<void>
   handleClearDraftLocation(): void
   handleOpenLocation(): Promise<void>
@@ -72,6 +119,11 @@ interface RecordPageCustom {
   handleCancelEdit(): void
   handleSaveEdit(): Promise<void>
   handleDeleteItem(): Promise<void>
+  handleOpenShare(): Promise<void>
+  handleCloseShareFlow(): void
+  handleToggleShareSelection(event: ShareSelectionToggleEvent): void
+  handleGenerateSharePreview(): Promise<void>
+  handleReturnToShareSelection(): void
 }
 
 type RecordPageInstance = WechatMiniprogram.Page.Instance<
@@ -101,9 +153,25 @@ type NoteInputEvent = WechatMiniprogram.CustomEvent<{
   readonly value: string
 }>
 
+type ShareSelectionToggleEvent = WechatMiniprogram.BaseEvent<
+  WechatMiniprogram.IAnyObject,
+  {
+    readonly selectionKey?: string
+  }
+>
+
 const DEFAULT_SCENE_TYPE: SceneType = 'default'
 
-function resolveNavigationTitle(mode: RecordPageMode, sceneLabel: string): string {
+function resolveNavigationTitle(
+  mode: RecordPageMode,
+  sceneLabel: string,
+  shareFlowVisible: boolean,
+  shareStep: ShareStep
+): string {
+  if (shareFlowVisible) {
+    return shareStep === 'preview' ? '预览分享' : '选择分享内容'
+  }
+
   if (mode === 'create') {
     return `记下${sceneLabel}`
   }
@@ -115,9 +183,14 @@ function resolveNavigationTitle(mode: RecordPageMode, sceneLabel: string): strin
   return sceneLabel
 }
 
-function syncNavigationTitle(mode: RecordPageMode, sceneLabel: string): void {
+function syncNavigationTitle(
+  mode: RecordPageMode,
+  sceneLabel: string,
+  shareFlowVisible: boolean = false,
+  shareStep: ShareStep = 'select'
+): void {
   wx.setNavigationBarTitle({
-    title: resolveNavigationTitle(mode, sceneLabel),
+    title: resolveNavigationTitle(mode, sceneLabel, shareFlowVisible, shareStep),
   })
 }
 
@@ -127,6 +200,55 @@ function getActiveLocation(page: RecordPageInstance): LocationSnapshot | undefin
 
 function getActivePhoto(page: RecordPageInstance): PhotoAsset | undefined {
   return page.currentItem?.photos[0] ?? page.draftPhotos[0]
+}
+
+function buildClosedShareState(): Pick<
+  RecordPageData,
+  | 'shareFlowVisible'
+  | 'shareStep'
+  | 'shareMandatoryItems'
+  | 'shareSelectionItems'
+  | 'shareHasSelectionItems'
+  | 'sharePreviewShareId'
+  | 'sharePreviewCardTitle'
+  | 'sharePreviewCardSubtitle'
+  | 'sharePreviewFieldViews'
+  | 'sharePreviewHasFields'
+  | 'sharePreviewHasLocation'
+  | 'sharePreviewLocationTitle'
+  | 'sharePreviewLocationSubtitle'
+  | 'sharePreviewHasPhoto'
+  | 'sharePreviewPhotoPath'
+  | 'sharePreviewImageState'
+  | 'sharePreviewHasNote'
+  | 'sharePreviewNoteText'
+> {
+  return {
+    shareFlowVisible: false,
+    shareStep: 'select',
+    shareMandatoryItems: [],
+    shareSelectionItems: [],
+    shareHasSelectionItems: false,
+    sharePreviewShareId: '',
+    sharePreviewCardTitle: '',
+    sharePreviewCardSubtitle: '',
+    sharePreviewFieldViews: [],
+    sharePreviewHasFields: false,
+    sharePreviewHasLocation: false,
+    sharePreviewLocationTitle: '',
+    sharePreviewLocationSubtitle: '',
+    sharePreviewHasPhoto: false,
+    sharePreviewPhotoPath: '',
+    sharePreviewImageState: 'none',
+    sharePreviewHasNote: false,
+    sharePreviewNoteText: '',
+  }
+}
+
+function resetShareState(page: RecordPageInstance): void {
+  page.preparedShare = null
+  page.setData(buildClosedShareState())
+  syncNavigationTitle(page.data.pageMode, page.data.sceneLabel, false, 'select')
 }
 
 function syncRecordState(
@@ -143,7 +265,7 @@ function syncRecordState(
   const hasFilledFields = nextFieldViews.some((fieldView) => fieldView.value.trim().length > 0)
   const hasNote = note.trim().length > 0
 
-  syncNavigationTitle(mode, sceneLabel)
+  syncNavigationTitle(mode, sceneLabel, page.data.shareFlowVisible, page.data.shareStep)
 
   page.setData({
     pageMode: mode,
@@ -173,6 +295,8 @@ function enterCreateMode(page: RecordPageInstance, sceneType: SceneType): void {
   page.currentItem = null
   page.draftLocation = undefined
   page.draftPhotos = []
+  page.preparedShare = null
+  page.setData(buildClosedShareState())
   syncRecordState(page, 'create', sceneType, {}, '')
 }
 
@@ -180,6 +304,8 @@ function enterViewMode(page: RecordPageInstance, item: Item): void {
   page.currentItem = item
   page.draftLocation = undefined
   page.draftPhotos = []
+  page.preparedShare = null
+  page.setData(buildClosedShareState())
   syncRecordState(page, 'view', item.sceneType, item.anchorValues, item.note)
 }
 
@@ -187,6 +313,8 @@ function enterEditMode(page: RecordPageInstance, item: Item): void {
   page.currentItem = item
   page.draftLocation = undefined
   page.draftPhotos = []
+  page.preparedShare = null
+  page.setData(buildClosedShareState())
   syncRecordState(page, 'edit', item.sceneType, item.anchorValues, item.note)
 }
 
@@ -348,6 +476,159 @@ async function redirectTo(url: string): Promise<void> {
   })
 }
 
+function buildShareMandatoryItems(item: Item): readonly ShareMandatoryItemView[] {
+  return Object.freeze([
+    {
+      key: 'scene',
+      label: '场景',
+      value: getSceneLabel(item.sceneType),
+      helperText: '场景会始终被分享',
+    },
+    {
+      key: 'location',
+      label: '定位',
+      value: item.location.name,
+      helperText: '定位会始终被分享',
+    },
+  ])
+}
+
+function buildShareSelectionItems(item: Item): readonly ShareSelectionItemView[] {
+  const selectionItems: ShareSelectionItemView[] = []
+  const photo = item.photos[0]
+
+  if (photo) {
+    selectionItems.push({
+      key: 'photo',
+      label: '图片',
+      value: '包含当前照片',
+      helperText: '发送后可查看照片',
+      checked: true,
+      kind: 'photo',
+    })
+  }
+
+  const filledFieldViews = buildFieldViews(item.sceneType, item.anchorValues).filter(
+    (fieldView) => fieldView.value.trim().length > 0
+  )
+  for (const fieldView of filledFieldViews) {
+    selectionItems.push({
+      key: `field:${fieldView.key}`,
+      label: fieldView.label,
+      value: fieldView.displayValue,
+      helperText: '可按需隐藏这一项',
+      checked: true,
+      kind: 'field',
+      fieldKey: fieldView.key,
+    })
+  }
+
+  if (item.note.trim().length > 0) {
+    selectionItems.push({
+      key: 'note',
+      label: '备注',
+      value: item.note,
+      helperText: '可按需隐藏备注',
+      checked: true,
+      kind: 'note',
+    })
+  }
+
+  return Object.freeze(selectionItems)
+}
+
+function buildShareSnapshotSelection(
+  selectionItems: readonly ShareSelectionItemView[]
+): ShareSnapshotSelection {
+  const includedFieldKeys: SceneFieldKey[] = []
+  let includePhoto = false
+  let includeNote = false
+
+  for (const selectionItem of selectionItems) {
+    if (!selectionItem.checked) {
+      continue
+    }
+
+    if (selectionItem.kind === 'photo') {
+      includePhoto = true
+      continue
+    }
+
+    if (selectionItem.kind === 'note') {
+      includeNote = true
+      continue
+    }
+
+    if (selectionItem.fieldKey) {
+      includedFieldKeys.push(selectionItem.fieldKey)
+    }
+  }
+
+  return Object.freeze({
+    includePhoto,
+    includedFieldKeys: Object.freeze(includedFieldKeys),
+    includeNote,
+  })
+}
+
+function syncSharePreviewState(
+  page: RecordPageInstance,
+  previewItem: SharedItem,
+  preparedShare: PreparedShareSnapshot
+): void {
+  const shareFieldViews = buildFieldViews(
+    previewItem.sceneType,
+    previewItem.anchorValues
+  ).filter((fieldView) => fieldView.value.trim().length > 0)
+  const locationPresentation = buildLocationPresentation(previewItem.location)
+  const photoPresentation = buildPhotoPresentation(previewItem.photos[0], 'view')
+
+  page.setData({
+    shareFlowVisible: true,
+    shareStep: 'preview',
+    sharePreviewShareId: preparedShare.shareId,
+    sharePreviewCardTitle: preparedShare.shareCardTitle,
+    sharePreviewCardSubtitle: preparedShare.shareCardSubtitle,
+    sharePreviewFieldViews: shareFieldViews,
+    sharePreviewHasFields: shareFieldViews.length > 0,
+    sharePreviewHasLocation: locationPresentation.hasLocation,
+    sharePreviewLocationTitle: locationPresentation.title,
+    sharePreviewLocationSubtitle: locationPresentation.subtitle,
+    sharePreviewHasPhoto: photoPresentation.hasPhoto,
+    sharePreviewPhotoPath: photoPresentation.photoPath,
+    sharePreviewImageState: photoPresentation.hasPhoto ? 'ready' : 'none',
+    sharePreviewHasNote: previewItem.note.trim().length > 0,
+    sharePreviewNoteText: buildNoteDisplayText(previewItem.note),
+  })
+
+  syncNavigationTitle(page.data.pageMode, page.data.sceneLabel, true, 'preview')
+}
+
+function openShareFlow(page: RecordPageInstance, item: Item): void {
+  page.preparedShare = null
+  page.setData({
+    shareFlowVisible: true,
+    shareStep: 'select',
+    shareMandatoryItems: buildShareMandatoryItems(item),
+    shareSelectionItems: buildShareSelectionItems(item),
+    shareHasSelectionItems: buildShareSelectionItems(item).length > 0,
+    sharePreviewShareId: '',
+    sharePreviewCardTitle: '',
+    sharePreviewCardSubtitle: '',
+    sharePreviewFieldViews: [],
+    sharePreviewHasFields: false,
+    sharePreviewHasLocation: false,
+    sharePreviewLocationTitle: '',
+    sharePreviewLocationSubtitle: '',
+    sharePreviewHasPhoto: false,
+    sharePreviewPhotoPath: '',
+    sharePreviewImageState: 'none',
+    sharePreviewHasNote: false,
+    sharePreviewNoteText: '',
+  })
+  syncNavigationTitle(page.data.pageMode, page.data.sceneLabel, true, 'select')
+}
+
 async function initializeRecordPage(
   page: RecordPageInstance,
   options: WechatMiniprogram.IAnyObject
@@ -418,6 +699,7 @@ const initialData: RecordPageData = {
   canCreate: false,
   canSave: false,
   canAttachPhoto: false,
+  ...buildClosedShareState(),
 }
 
 Page<RecordPageData, RecordPageCustom>({
@@ -427,6 +709,7 @@ Page<RecordPageData, RecordPageCustom>({
   currentItem: null,
   draftLocation: undefined,
   draftPhotos: [],
+  preparedShare: null,
 
   async onLoad(options) {
     try {
@@ -439,6 +722,21 @@ Page<RecordPageData, RecordPageCustom>({
       this.setData({
         pageReady: true,
       })
+    }
+  },
+
+  onShareAppMessage() {
+    const preparedShare = this.preparedShare
+    if (!preparedShare) {
+      return {
+        title: this.data.sceneLabel,
+        path: FRONTEND_ROUTES.scene,
+      }
+    }
+
+    return {
+      title: preparedShare.shareCardTitle,
+      path: this.runtime.buildSharePath(preparedShare.shareId),
     }
   },
 
@@ -760,5 +1058,93 @@ Page<RecordPageData, RecordPageCustom>({
     } catch (error) {
       await handleAsyncError(this, error, '删除记录失败：')
     }
+  },
+
+  async handleOpenShare() {
+    if (this.data.busy || !this.data.isViewMode || !this.currentItem) {
+      return
+    }
+
+    try {
+      const shouldContinue = await confirmAction(
+        '分享前提醒',
+        '隐私信息请勿分享给陌生人。你可以在下一步选择具体分享哪些内容。',
+        '继续'
+      )
+
+      if (!shouldContinue) {
+        return
+      }
+
+      openShareFlow(this, this.currentItem)
+    } catch (error) {
+      await handleAsyncError(this, error, '打开分享失败：')
+    }
+  },
+
+  handleCloseShareFlow() {
+    if (!this.data.shareFlowVisible) {
+      return
+    }
+
+    resetShareState(this)
+  },
+
+  handleToggleShareSelection(event) {
+    if (this.data.busy || !this.data.shareFlowVisible || this.data.shareStep !== 'select') {
+      return
+    }
+
+    const selectionKey = event.currentTarget.dataset.selectionKey
+    if (typeof selectionKey !== 'string' || selectionKey.length === 0) {
+      return
+    }
+
+    this.setData({
+      shareSelectionItems: this.data.shareSelectionItems.map((selectionItem) =>
+        selectionItem.key === selectionKey
+          ? {
+              ...selectionItem,
+              checked: !selectionItem.checked,
+            }
+          : selectionItem
+      ),
+    })
+  },
+
+  async handleGenerateSharePreview() {
+    if (
+      this.data.busy ||
+      !this.data.shareFlowVisible ||
+      this.data.shareStep !== 'select' ||
+      !this.currentItem
+    ) {
+      return
+    }
+
+    try {
+      const preparedShare = await runBusy(this, '生成分享', async () =>
+        this.runtime.prepareShareSnapshot(
+          this.currentItem as Item,
+          buildShareSnapshotSelection(this.data.shareSelectionItems)
+        )
+      )
+
+      this.preparedShare = preparedShare
+      syncSharePreviewState(this, preparedShare.previewItem, preparedShare)
+    } catch (error) {
+      await handleAsyncError(this, error, '生成分享失败：')
+    }
+  },
+
+  handleReturnToShareSelection() {
+    if (!this.data.shareFlowVisible || this.data.shareStep !== 'preview') {
+      return
+    }
+
+    this.setData({
+      shareStep: 'select',
+    })
+    syncNavigationTitle(this.data.pageMode, this.data.sceneLabel, true, 'select')
   },
 })

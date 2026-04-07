@@ -71,7 +71,7 @@ const FOOTER_NAV_ITEMS: readonly FooterNavItemView[] = FRONTEND_PRIMARY_NAV.map(
   isActive: navItem.key === 'scene',
 }))
 
-Page<ScenePageData>({
+Page<ScenePageData, WechatMiniprogram.IAnyObject>({
   data: {
     sceneCards: SCENE_CARDS,
     footerNavItems: FOOTER_NAV_ITEMS,

@@ -1,5 +1,6 @@
 import type {
   ItemSummary,
+  Item,
   LocationSnapshot,
   PhotoAsset,
   SceneFieldControl,
@@ -248,4 +249,24 @@ export function buildSummaryAnchorsText(summary: ItemSummary): string {
 
 export function buildNoteDisplayText(note: string): string {
   return trimOptionalString(note) ?? ''
+}
+
+export function buildShareCardTitleFromItem(item: Pick<Item, 'location' | 'sceneType'>): string {
+  return (
+    trimOptionalString(item.location.name) ??
+    trimOptionalString(item.location.address) ??
+    getSceneLabel(item.sceneType)
+  )
+}
+
+export function buildShareCardSubtitleFromItem(
+  item: Pick<Item, 'location' | 'sceneType' | 'anchorValues'>
+): string {
+  const address = trimOptionalString(item.location.address)
+  if (address) {
+    return address
+  }
+
+  const anchorText = buildAnchorDisplayLines(item.sceneType, item.anchorValues).join(' · ')
+  return anchorText.length > 0 ? anchorText : getSceneLabel(item.sceneType)
 }

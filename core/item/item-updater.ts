@@ -1,4 +1,4 @@
-import type { Item, SceneFieldValueMap, TimestampMs, UpdateEditableItemInput } from '../types'
+import type { Item, TimestampMs, UpdateEditableItemInput } from '../types'
 import {
   areSceneFieldValuesEqual,
   computeNextUpdatedAt,

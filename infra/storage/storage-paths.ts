@@ -4,14 +4,18 @@ import { StorageError } from './storage-errors'
 export const STORAGE_NAMESPACE = 'foots'
 export const STORAGE_ROOT_DIRECTORY_NAME = 'storage'
 export const STORAGE_ITEMS_DIRECTORY_NAME = 'items'
+export const STORAGE_SHARED_DIRECTORY_NAME = 'shared'
 export const STORAGE_INDEXES_DIRECTORY_NAME = 'indexes'
 export const STORAGE_ITEM_INDEX_FILE_NAME = 'item-index.json'
 export const STORAGE_ITEM_DATA_FILE_NAME = 'item.json'
 export const STORAGE_ITEM_PHOTOS_DIRECTORY_NAME = 'photos'
+export const STORAGE_SHARED_DATA_FILE_NAME = 'shared-item.json'
+export const STORAGE_SHARED_PHOTOS_DIRECTORY_NAME = 'photos'
 
 export interface StoragePaths {
   readonly rootDir: string
   readonly itemsDir: string
+  readonly sharedDir: string
   readonly indexesDir: string
   readonly itemIndexFilePath: string
 }
@@ -20,6 +24,13 @@ export interface ItemStoragePaths {
   readonly itemId: ItemId
   readonly itemDir: string
   readonly itemFilePath: string
+  readonly photosDir: string
+}
+
+export interface SharedStoragePaths {
+  readonly shareId: string
+  readonly sharedItemDir: string
+  readonly sharedItemFilePath: string
   readonly photosDir: string
 }
 
@@ -90,11 +101,13 @@ export function createStoragePaths(rootBasePath?: string): StoragePaths {
     STORAGE_ROOT_DIRECTORY_NAME
   )
   const itemsDir = joinStoragePath(rootDir, STORAGE_ITEMS_DIRECTORY_NAME)
+  const sharedDir = joinStoragePath(rootDir, STORAGE_SHARED_DIRECTORY_NAME)
   const indexesDir = joinStoragePath(rootDir, STORAGE_INDEXES_DIRECTORY_NAME)
 
   return Object.freeze({
     rootDir,
     itemsDir,
+    sharedDir,
     indexesDir,
     itemIndexFilePath: joinStoragePath(indexesDir, STORAGE_ITEM_INDEX_FILE_NAME),
   })
@@ -113,6 +126,32 @@ export function getItemStoragePaths(
     itemFilePath: joinStoragePath(itemDir, STORAGE_ITEM_DATA_FILE_NAME),
     photosDir: joinStoragePath(itemDir, STORAGE_ITEM_PHOTOS_DIRECTORY_NAME),
   })
+}
+
+export function getSharedStoragePaths(
+  storagePaths: StoragePaths,
+  shareId: string
+): SharedStoragePaths {
+  const safeShareDirectoryName = encodePathSegment(shareId)
+  const sharedItemDir = joinStoragePath(storagePaths.sharedDir, safeShareDirectoryName)
+
+  return Object.freeze({
+    shareId,
+    sharedItemDir,
+    sharedItemFilePath: joinStoragePath(sharedItemDir, STORAGE_SHARED_DATA_FILE_NAME),
+    photosDir: joinStoragePath(sharedItemDir, STORAGE_SHARED_PHOTOS_DIRECTORY_NAME),
+  })
+}
+
+export function getSharedFilePathFromDirectoryName(
+  storagePaths: StoragePaths,
+  directoryName: string
+): string {
+  return joinStoragePath(
+    storagePaths.sharedDir,
+    directoryName,
+    STORAGE_SHARED_DATA_FILE_NAME
+  )
 }
 
 export function getItemFilePathFromDirectoryName(

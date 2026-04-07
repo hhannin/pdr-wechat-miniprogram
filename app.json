@@ -2,7 +2,8 @@
   "pages": [
     "pages/scene/index",
     "pages/records/index",
-    "pages/record/index"
+    "pages/record/index",
+    "pages/share/index"
   ],
   "permission": {
     "scope.userLocation": {

@@ -25,11 +25,6 @@ export const MAX_LIST_RECENT_LIMIT = 100
 const EMPTY_PHOTO_ASSETS = Object.freeze([]) as readonly PhotoAsset[]
 const EMPTY_SCENE_FIELD_VALUES = Object.freeze({}) as SceneFieldValueMap
 
-interface Timestamped {
-  readonly createdAt?: TimestampMs
-  readonly updatedAt?: TimestampMs
-}
-
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
@@ -416,7 +411,7 @@ export function freezeItem(item: Item): Item {
   })
 }
 
-export function cloneTimestamped<T extends Timestamped>(
+export function cloneTimestamped<T extends object>(
   value: T,
   timestamps: {
     readonly createdAt: TimestampMs

@@ -57,7 +57,12 @@ function normalizeCaptureCount(value: unknown): number {
     return DEFAULT_CAPTURE_COUNT
   }
 
-  if (!Number.isInteger(value) || value <= 0 || value > MAX_CAPTURE_COUNT) {
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value <= 0 ||
+    value > MAX_CAPTURE_COUNT
+  ) {
     throw new MediaError(
       'invalid_capture_request',
       'capture_photo',
@@ -66,7 +71,7 @@ function normalizeCaptureCount(value: unknown): number {
     )
   }
 
-  return value
+  return Math.floor(value)
 }
 
 function resolveSizeTypes(
@@ -157,7 +162,9 @@ function buildCapturedPhotoEntries(
     entries.push(
       Object.freeze({
         tempFilePath,
-        declaredByteLength: normalizePositiveInteger(tempFile?.size),
+        declaredByteLength: normalizePositiveInteger(
+          typeof tempFile?.size === 'number' ? tempFile.size : undefined
+        ),
       })
     )
   }

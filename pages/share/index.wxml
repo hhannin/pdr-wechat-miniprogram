@@ -1,0 +1,102 @@
+<view class="page-shell">
+  <view class="share-topbar share-page-topbar">
+    <view class="share-topbar-action" bindtap="handleBackHome">
+      <image class="share-topbar-icon" src="/assets/ui/home-line.svg" mode="aspectFit" />
+      <view class="share-topbar-text">首页</view>
+    </view>
+    <view class="share-topbar-title">分享内容</view>
+    <view class="share-topbar-action share-topbar-action-placeholder"></view>
+  </view>
+
+  <block wx:if="{{pageStatus === 'loading'}}">
+    <view class="section-card loading-card">
+      <view class="section-title">载入中</view>
+      <view class="section-desc">正在读取分享内容</view>
+    </view>
+  </block>
+
+  <block wx:elif="{{pageStatus === 'requires_network'}}">
+    <view class="section-card share-banner-card">
+      <view class="record-strip">
+        <view class="record-chip record-chip-muted">分享快照</view>
+      </view>
+      <view class="section-title">首次打开需要联网</view>
+      <view class="section-desc">当前设备里还没有这份分享缓存，请联网后再打开一次。</view>
+    </view>
+  </block>
+
+  <block wx:elif="{{pageStatus === 'expired'}}">
+    <view class="section-card share-banner-card">
+      <view class="record-strip">
+        <view class="record-chip record-chip-muted">分享快照</view>
+      </view>
+      <view class="section-title">分享已过期</view>
+      <view class="section-desc">这份分享内容已经失效，当前不能继续查看。</view>
+    </view>
+  </block>
+
+  <block wx:elif="{{pageStatus === 'ready'}}">
+    <view class="section-card share-banner-card">
+      <view class="record-strip">
+        <view class="record-chip">{{sceneLabel}}</view>
+        <view class="record-chip record-chip-muted">分享快照</view>
+      </view>
+      <view class="section-title">{{shareCardTitle}}</view>
+      <view class="section-desc" wx:if="{{shareCardSubtitle}}">{{shareCardSubtitle}}</view>
+    </view>
+
+    <view class="section-card photo-card" wx:if="{{imageState !== 'none'}}">
+      <view
+        class="photo-stage {{hasPhoto ? 'photo-stage-filled photo-stage-tappable' : 'photo-stage-empty photo-stage-tappable'}}"
+        bindtap="handlePhotoTap"
+      >
+        <image wx:if="{{hasPhoto}}" class="photo-preview" src="{{photoPath}}" mode="aspectFit" />
+        <view wx:elif="{{imageState === 'pending'}}" class="photo-empty-shell">
+          <view class="share-image-placeholder">
+            <view class="section-title">正在加载图片</view>
+            <view class="section-desc">首次打开时会缓存原始图片</view>
+          </view>
+        </view>
+        <view wx:else class="photo-empty-shell">
+          <view class="share-image-placeholder">
+            <image class="share-image-fallback-icon" src="/assets/ui/image-off.svg" mode="aspectFit" />
+            <view class="section-title">图片加载失败</view>
+            <view class="section-desc">点击此区域可重试加载图片</view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-card location-card" wx:if="{{hasLocation}}">
+      <view class="location-shell">
+        <image class="location-icon" src="/assets/ui/map-pin.svg" mode="aspectFit" />
+        <view class="location-copy">
+          <view class="location-title">{{locationTitle}}</view>
+          <view class="location-subtitle" wx:if="{{locationSubtitle}}">{{locationSubtitle}}</view>
+        </view>
+      </view>
+      <view class="location-footer">
+        <button class="inline-button" bindtap="handleOpenLocation">去这里</button>
+      </view>
+    </view>
+
+    <view class="section-card" wx:if="{{hasFilledFields}}">
+      <block wx:for="{{fieldViews}}" wx:key="key" wx:for-item="fieldView">
+        <view class="field-block">
+          <view class="field-head">
+            <view class="field-title">{{fieldView.label}}</view>
+          </view>
+          <view class="field-static">
+            <view class="field-static-value">{{fieldView.displayValue}}</view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view class="section-card" wx:if="{{hasNote}}">
+      <view class="note-view">
+        <view class="note-text">{{noteDisplayText}}</view>
+      </view>
+    </view>
+  </block>
+</view>
