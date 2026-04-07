@@ -6,7 +6,7 @@ function tryInitializeCloud(): void {
   }
 
   wx.cloud.init({
-    env: 'DYNAMIC_CURRENT_ENV',
+    env: 'cloud1-4gdx7mux69e016b3',
     traceUser: true,
   })
 }
