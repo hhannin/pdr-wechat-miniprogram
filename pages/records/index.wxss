@@ -45,6 +45,59 @@
   gap: 26rpx;
 }
 
+.records-pinned-shell {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 18rpx 22rpx 20rpx;
+  border-radius: 32rpx;
+  border: 1px solid rgba(34, 60, 43, 0.08);
+  box-shadow: 0 20rpx 48rpx rgba(49, 42, 27, 0.1);
+  background: rgba(255, 251, 245, 0.94);
+  backdrop-filter: blur(16rpx);
+  box-sizing: border-box;
+}
+
+.records-pinned-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 4rpx 2rpx;
+}
+
+.records-pinned-copy {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.records-pinned-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #223c2b;
+}
+
+.records-pinned-count,
+.records-pinned-toggle {
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: rgba(34, 60, 43, 0.62);
+}
+
+.records-pinned-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 18rpx;
+  padding-top: 18rpx;
+  border-top: 1px solid rgba(34, 60, 43, 0.06);
+}
+
 .records-group {
   display: flex;
   flex-direction: column;
@@ -75,9 +128,9 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: 240rpx;
+  width: 360rpx;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   z-index: 1;
   min-height: 204rpx;
 }
@@ -103,6 +156,10 @@
   background: linear-gradient(180deg, #2f7753, #245f42);
 }
 
+.record-action-pin {
+  background: linear-gradient(180deg, #c68a33, #a66d1f);
+}
+
 .record-action-delete {
   background: linear-gradient(180deg, #a44c56, #7f3640);
 }
@@ -118,7 +175,7 @@
 }
 
 .record-card-open {
-  transform: translateX(-240rpx);
+  transform: translateX(-360rpx);
 }
 
 .record-card-highlighted {
@@ -320,6 +377,7 @@
   background: rgba(255, 252, 247, 0.92);
   border: 1px solid rgba(34, 60, 43, 0.08);
   box-shadow: 0 20rpx 56rpx rgba(44, 38, 27, 0.16);
+  z-index: 16;
 }
 
 .footer-nav-item {

@@ -46,6 +46,14 @@ function normalizePositiveInteger(value: unknown): number | undefined {
   return Math.floor(value)
 }
 
+function normalizeOptionalTimestampMs(value: unknown): TimestampMs | undefined {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+
+  return normalizeTimestampMs(value, 'Item pinnedAt')
+}
+
 function inferMimeType(fileName: string): string {
   const lowerCaseFileName = fileName.toLowerCase()
 
@@ -403,6 +411,7 @@ export function freezeItem(item: Item): Item {
     id: normalizeItemId(item.id),
     createdAt: normalizeTimestampMs(item.createdAt, 'Item createdAt'),
     updatedAt: normalizeTimestampMs(item.updatedAt, 'Item updatedAt'),
+    pinnedAt: normalizeOptionalTimestampMs(item.pinnedAt),
     sceneType: item.sceneType,
     anchorValues: freezeSceneFieldValues(item.anchorValues),
     note: normalizeNote(item.note),

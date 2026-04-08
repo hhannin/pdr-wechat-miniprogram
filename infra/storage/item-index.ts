@@ -91,6 +91,10 @@ function normalizeItemSummary(summary: unknown): ItemSummary {
     sceneType: normalizeSceneType(rawSummary.sceneType),
     createdAt: normalizeTimestampMs(rawSummary.createdAt, 'Stored summary createdAt'),
     updatedAt: normalizeTimestampMs(rawSummary.updatedAt, 'Stored summary updatedAt'),
+    pinnedAt:
+      typeof rawSummary.pinnedAt === 'number' && rawSummary.pinnedAt > 0
+        ? normalizeTimestampMs(rawSummary.pinnedAt, 'Stored summary pinnedAt')
+        : undefined,
     locationName: normalizeRequiredString(rawSummary.locationName, 'locationName'),
     address: normalizeRequiredString(rawSummary.address, 'address'),
     coverPhotoPath: normalizeOptionalString(rawSummary.coverPhotoPath),

@@ -17,6 +17,7 @@ interface FooterNavItemView extends FrontendPrimaryNavItem {
 }
 
 interface RecordsItemView {
+  readonly rowKey: string
   readonly id: string
   readonly title: string
   readonly subtitle: string
@@ -24,6 +25,8 @@ interface RecordsItemView {
   readonly sceneLabel: string
   readonly coverPhotoPath: string
   readonly hasPhoto: boolean
+  readonly isPinned: boolean
+  readonly pinActionLabel: string
   readonly isSwipeOpen: boolean
   readonly isHighlighted: boolean
 }
@@ -41,6 +44,9 @@ interface RecordsPageData {
   readonly statusText: string
   readonly errorText: string
   readonly hasItems: boolean
+  readonly hasPinnedItems: boolean
+  readonly pinnedSectionCollapsed: boolean
+  readonly pinnedItems: readonly RecordsItemView[]
   readonly groups: readonly RecordsGroupView[]
   readonly footerNavItems: readonly FooterNavItemView[]
 }
@@ -48,19 +54,21 @@ interface RecordsPageData {
 interface RecordsPageCustom {
   readonly runtime: AppRuntime
   summaries: readonly ItemSummary[]
-  openSwipeItemId: string
+  openSwipeRowKey: string
   focusItemId: string
   touchStartX: number
   touchStartY: number
-  touchStartItemId: string
+  touchStartRowKey: string
   onLoad(options: WechatMiniprogram.IAnyObject): Promise<void>
   onShow(): void
   onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent
   onPullDownRefresh(): Promise<void>
+  handleTogglePinnedSection(): void
   handleCardTouchStart(event: ItemTouchEvent): void
   handleCardTouchEnd(event: ItemTouchEvent): void
   handleCardTap(event: ItemTapEvent): Promise<void>
   handleEditTap(event: ItemTapEvent): Promise<void>
+  handlePinTap(event: ItemTapEvent): Promise<void>
   handleDeleteTap(event: ItemTapEvent): Promise<void>
 }
 
@@ -73,6 +81,7 @@ type ItemTapEvent = WechatMiniprogram.BaseEvent<
   WechatMiniprogram.IAnyObject,
   {
     readonly itemId?: string
+    readonly rowKey?: string
   }
 >
 
@@ -81,9 +90,11 @@ type ItemTouchEvent = WechatMiniprogram.TouchEvent<
   WechatMiniprogram.IAnyObject,
   {
     readonly itemId?: string
+    readonly rowKey?: string
   },
   {
     readonly itemId?: string
+    readonly rowKey?: string
   }
 >
 
@@ -210,10 +221,12 @@ function readQueryString(
 
 function buildItemView(
   summary: ItemSummary,
-  openSwipeItemId: string,
+  rowKey: string,
+  openSwipeRowKey: string,
   focusItemId: string
 ): RecordsItemView {
   return {
+    rowKey,
     id: summary.id,
     title: summary.locationName,
     subtitle: summary.address,
@@ -221,14 +234,44 @@ function buildItemView(
     sceneLabel: getSceneLabel(summary.sceneType),
     coverPhotoPath: summary.coverPhotoPath ?? '',
     hasPhoto: typeof summary.coverPhotoPath === 'string' && summary.coverPhotoPath.length > 0,
-    isSwipeOpen: summary.id === openSwipeItemId,
+    isPinned: typeof summary.pinnedAt === 'number' && summary.pinnedAt > 0,
+    pinActionLabel:
+      typeof summary.pinnedAt === 'number' && summary.pinnedAt > 0 ? '取消置顶' : '置顶',
+    isSwipeOpen: rowKey === openSwipeRowKey,
     isHighlighted: summary.id === focusItemId,
   }
 }
 
+function comparePinnedSummaries(left: ItemSummary, right: ItemSummary): number {
+  const leftPinnedAt = typeof left.pinnedAt === 'number' ? left.pinnedAt : 0
+  const rightPinnedAt = typeof right.pinnedAt === 'number' ? right.pinnedAt : 0
+
+  if (leftPinnedAt !== rightPinnedAt) {
+    return rightPinnedAt - leftPinnedAt
+  }
+
+  if (left.createdAt !== right.createdAt) {
+    return right.createdAt - left.createdAt
+  }
+
+  return left.id.localeCompare(right.id)
+}
+
+function buildPinnedItemViews(
+  summaries: readonly ItemSummary[],
+  openSwipeRowKey: string,
+  focusItemId: string
+): readonly RecordsItemView[] {
+  return summaries
+    .filter((summary) => typeof summary.pinnedAt === 'number' && summary.pinnedAt > 0)
+    .slice()
+    .sort(comparePinnedSummaries)
+    .map((summary) => buildItemView(summary, `pinned:${summary.id}`, openSwipeRowKey, focusItemId))
+}
+
 function buildGroupViews(
   summaries: readonly ItemSummary[],
-  openSwipeItemId: string,
+  openSwipeRowKey: string,
   focusItemId: string
 ): readonly RecordsGroupView[] {
   const groups = new Map<string, RecordsItemView[]>()
@@ -237,7 +280,7 @@ function buildGroupViews(
   for (const summary of summaries) {
     const groupKey = formatDateKey(summary.createdAt)
     const items = groups.get(groupKey) ?? []
-    items.push(buildItemView(summary, openSwipeItemId, focusItemId))
+    items.push(buildItemView(summary, `group:${groupKey}:${summary.id}`, openSwipeRowKey, focusItemId))
     groups.set(groupKey, items)
 
     if (!titles.has(groupKey)) {
@@ -253,27 +296,35 @@ function buildGroupViews(
 }
 
 function syncItemGroups(page: RecordsPageInstance): void {
+  const pinnedItems = buildPinnedItemViews(
+    page.summaries,
+    page.openSwipeRowKey,
+    page.focusItemId
+  )
+
   page.setData({
     hasItems: page.summaries.length > 0,
-    groups: buildGroupViews(page.summaries, page.openSwipeItemId, page.focusItemId),
+    hasPinnedItems: pinnedItems.length > 0,
+    pinnedItems,
+    groups: buildGroupViews(page.summaries, page.openSwipeRowKey, page.focusItemId),
   })
 }
 
 function closeSwipeActions(page: RecordsPageInstance): void {
-  if (!page.openSwipeItemId) {
+  if (!page.openSwipeRowKey) {
     return
   }
 
-  page.openSwipeItemId = ''
+  page.openSwipeRowKey = ''
   syncItemGroups(page)
 }
 
-function openSwipeActions(page: RecordsPageInstance, itemId: string): void {
-  if (page.openSwipeItemId === itemId) {
+function openSwipeActions(page: RecordsPageInstance, rowKey: string): void {
+  if (page.openSwipeRowKey === rowKey) {
     return
   }
 
-  page.openSwipeItemId = itemId
+  page.openSwipeRowKey = rowKey
   syncItemGroups(page)
 }
 
@@ -310,10 +361,13 @@ async function refreshItems(
       .sort((left, right) => right.createdAt - left.createdAt)
     page.summaries = summaries
 
-    if (page.openSwipeItemId) {
-      const hasOpenItem = summaries.some((summary) => summary.id === page.openSwipeItemId)
+    if (page.openSwipeRowKey) {
+      const hasOpenItem = [
+        ...buildPinnedItemViews(summaries, page.openSwipeRowKey, page.focusItemId),
+        ...buildGroupViews(summaries, page.openSwipeRowKey, page.focusItemId).flatMap((group) => group.items),
+      ].some((item) => item.rowKey === page.openSwipeRowKey)
       if (!hasOpenItem) {
-        page.openSwipeItemId = ''
+        page.openSwipeRowKey = ''
       }
     }
 
@@ -343,17 +397,20 @@ Page<RecordsPageData, RecordsPageCustom>({
     statusText: '',
     errorText: '',
     hasItems: false,
+    hasPinnedItems: false,
+    pinnedSectionCollapsed: true,
+    pinnedItems: [],
     groups: [],
     footerNavItems: FOOTER_NAV_ITEMS,
   },
 
   runtime: appRuntime,
   summaries: [],
-  openSwipeItemId: '',
+  openSwipeRowKey: '',
   focusItemId: '',
   touchStartX: 0,
   touchStartY: 0,
-  touchStartItemId: '',
+  touchStartRowKey: '',
 
   async onLoad(options) {
     const focusItemId = readQueryString(options, 'focusItemId')
@@ -413,34 +470,45 @@ Page<RecordsPageData, RecordsPageCustom>({
     }
   },
 
+  handleTogglePinnedSection() {
+    if (!this.data.hasPinnedItems) {
+      return
+    }
+
+    closeSwipeActions(this)
+    this.setData({
+      pinnedSectionCollapsed: !this.data.pinnedSectionCollapsed,
+    })
+  },
+
   handleCardTouchStart(event) {
     const touchPoint = event.touches[0]
-    const itemId = trimOptionalString(event.currentTarget.dataset.itemId)
+    const rowKey = trimOptionalString(event.currentTarget.dataset.rowKey)
 
     this.touchStartX = touchPoint?.pageX ?? 0
     this.touchStartY = touchPoint?.pageY ?? 0
-    this.touchStartItemId = itemId ?? ''
+    this.touchStartRowKey = rowKey ?? ''
   },
 
   handleCardTouchEnd(event) {
-    const itemId = trimOptionalString(event.currentTarget.dataset.itemId)
+    const rowKey = trimOptionalString(event.currentTarget.dataset.rowKey)
     const touchPoint = event.changedTouches[0]
 
-    if (!itemId || this.touchStartItemId !== itemId || !touchPoint) {
-      this.touchStartItemId = ''
+    if (!rowKey || this.touchStartRowKey !== rowKey || !touchPoint) {
+      this.touchStartRowKey = ''
       return
     }
 
     const deltaX = touchPoint.pageX - this.touchStartX
     const deltaY = touchPoint.pageY - this.touchStartY
-    this.touchStartItemId = ''
+    this.touchStartRowKey = ''
 
     if (Math.abs(deltaX) < 36 || Math.abs(deltaX) <= Math.abs(deltaY)) {
       return
     }
 
     if (deltaX < 0) {
-      openSwipeActions(this, itemId)
+      openSwipeActions(this, rowKey)
       return
     }
 
@@ -453,7 +521,7 @@ Page<RecordsPageData, RecordsPageCustom>({
       return
     }
 
-    if (this.openSwipeItemId) {
+    if (this.openSwipeRowKey) {
       closeSwipeActions(this)
       return
     }
@@ -480,6 +548,36 @@ Page<RecordsPageData, RecordsPageCustom>({
       await navigateTo(buildRecordDetailUrl(itemId, 'edit'))
     } catch (error) {
       showToastMessage(`打开编辑页失败：${formatErrorMessage(error)}`)
+    }
+  },
+
+  async handlePinTap(event) {
+    const itemId = trimOptionalString(event.currentTarget.dataset.itemId)
+    if (!itemId) {
+      return
+    }
+
+    const targetSummary = this.summaries.find((summary) => summary.id === itemId)
+    if (!targetSummary) {
+      showToastMessage('记录不存在或已删除')
+      return
+    }
+
+    const nextPinned = !(typeof targetSummary.pinnedAt === 'number' && targetSummary.pinnedAt > 0)
+
+    closeSwipeActions(this)
+    this.focusItemId = ''
+
+    try {
+      await runBusy(this, nextPinned ? '置顶' : '取消置顶', async () => {
+        await this.runtime.setPinned(itemId, nextPinned)
+      })
+
+      await refreshItems(this, {
+        silent: true,
+      })
+    } catch (error) {
+      showToastMessage(`${nextPinned ? '置顶失败' : '取消置顶失败'}：${formatErrorMessage(error)}`)
     }
   },
 

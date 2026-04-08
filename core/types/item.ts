@@ -26,6 +26,7 @@ export interface Item extends ItemEditableFields {
   readonly id: ItemId
   readonly createdAt: TimestampMs
   readonly updatedAt: TimestampMs
+  readonly pinnedAt?: TimestampMs
   readonly location: LocationSnapshot
   readonly photos: readonly PhotoAsset[]
 }
@@ -52,6 +53,7 @@ export interface ItemSummary {
   readonly sceneType: SceneType
   readonly createdAt: TimestampMs
   readonly updatedAt: TimestampMs
+  readonly pinnedAt?: TimestampMs
   readonly locationName: string
   readonly address: string
   readonly coverPhotoPath?: string

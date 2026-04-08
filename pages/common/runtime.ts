@@ -366,6 +366,10 @@ export class AppRuntime {
     }
   }
 
+  async setPinned(itemId: string, pinned: boolean): Promise<Item> {
+    return this.itemService.setPinned(itemId, pinned)
+  }
+
   async deleteItem(itemId: string): Promise<void> {
     await this.itemService.deleteById(itemId)
   }

@@ -117,6 +117,27 @@ export class ItemService {
     return nextItem
   }
 
+  async setPinned(itemId: string, pinned: boolean): Promise<Item> {
+    const currentItem = await this.getByIdOrThrow(itemId)
+    const nextPinnedAt = pinned ? this.now() : undefined
+
+    if (currentItem.pinnedAt === nextPinnedAt) {
+      return currentItem
+    }
+
+    const nextItem = freezeItem({
+      ...currentItem,
+      pinnedAt: nextPinnedAt,
+    })
+
+    await this.repository.save({
+      item: nextItem,
+      summary: buildItemSummary(nextItem, this.summaryOptions),
+    })
+
+    return nextItem
+  }
+
   async deleteById(itemId: string): Promise<void> {
     const normalizedItemId = normalizeItemId(itemId)
     await this.getByIdOrThrow(normalizedItemId)

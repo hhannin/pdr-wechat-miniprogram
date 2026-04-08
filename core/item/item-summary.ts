@@ -98,6 +98,7 @@ export function buildItemSummary(
     sceneType: item.sceneType,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
+    pinnedAt: item.pinnedAt,
     locationName: item.location.name,
     address: item.location.address,
     coverPhotoPath: item.photos[0]?.localPath,

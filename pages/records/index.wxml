@@ -1,10 +1,16 @@
 <view class="page-shell">
   <view class="records-list" wx:if="{{pageReady && hasItems}}">
-    <block wx:for="{{groups}}" wx:key="key" wx:for-item="group">
-      <view class="records-group">
-        <view class="records-group-title">{{group.title}}</view>
+    <view class="records-pinned-shell" wx:if="{{hasPinnedItems}}">
+      <view class="records-pinned-header" bindtap="handleTogglePinnedSection">
+        <view class="records-pinned-copy">
+          <view class="records-pinned-title">置顶</view>
+          <view class="records-pinned-count">{{pinnedItems.length}} 条</view>
+        </view>
+        <view class="records-pinned-toggle">{{pinnedSectionCollapsed ? '展开' : '收起'}}</view>
+      </view>
 
-        <block wx:for="{{group.items}}" wx:key="id" wx:for-item="item">
+      <view class="records-pinned-list" wx:if="{{!pinnedSectionCollapsed}}">
+        <block wx:for="{{pinnedItems}}" wx:key="rowKey" wx:for-item="item">
           <view class="record-row">
             <view class="record-actions">
               <view
@@ -13,6 +19,13 @@
                 data-item-id="{{item.id}}"
               >
                 编辑
+              </view>
+              <view
+                class="record-action record-action-pin {{item.isSwipeOpen ? 'record-action-visible' : ''}}"
+                catchtap="handlePinTap"
+                data-item-id="{{item.id}}"
+              >
+                {{item.pinActionLabel}}
               </view>
               <view
                 class="record-action record-action-delete {{item.isSwipeOpen ? 'record-action-visible' : ''}}"
@@ -26,6 +39,66 @@
             <view
               class="record-card {{item.isSwipeOpen ? 'record-card-open' : ''}} {{item.isHighlighted ? 'record-card-highlighted' : ''}}"
               data-item-id="{{item.id}}"
+              data-row-key="{{item.rowKey}}"
+              bindtap="handleCardTap"
+              bindtouchstart="handleCardTouchStart"
+              bindtouchend="handleCardTouchEnd"
+              hover-class="record-card-pressed"
+            >
+              <view class="record-card-layout">
+                <view class="record-thumb">
+                  <image wx:if="{{item.hasPhoto}}" class="record-photo" src="{{item.coverPhotoPath}}" mode="aspectFill" />
+                  <view wx:else class="record-photo-empty">无照片</view>
+                </view>
+                <view class="record-body">
+                  <view class="record-title">{{item.title}}</view>
+                  <view class="record-subtitle">{{item.subtitle}}</view>
+                  <view class="record-meta">
+                    <view class="record-time">{{item.timestampText}}</view>
+                    <view class="record-scene">{{item.sceneLabel}}</view>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+
+    <block wx:for="{{groups}}" wx:key="key" wx:for-item="group">
+      <view class="records-group">
+        <view class="records-group-title">{{group.title}}</view>
+
+        <block wx:for="{{group.items}}" wx:key="rowKey" wx:for-item="item">
+          <view class="record-row">
+            <view class="record-actions">
+              <view
+                class="record-action record-action-edit {{item.isSwipeOpen ? 'record-action-visible' : ''}}"
+                catchtap="handleEditTap"
+                data-item-id="{{item.id}}"
+              >
+                编辑
+              </view>
+              <view
+                class="record-action record-action-pin {{item.isSwipeOpen ? 'record-action-visible' : ''}}"
+                catchtap="handlePinTap"
+                data-item-id="{{item.id}}"
+              >
+                {{item.pinActionLabel}}
+              </view>
+              <view
+                class="record-action record-action-delete {{item.isSwipeOpen ? 'record-action-visible' : ''}}"
+                catchtap="handleDeleteTap"
+                data-item-id="{{item.id}}"
+              >
+                删除
+              </view>
+            </view>
+
+            <view
+              class="record-card {{item.isSwipeOpen ? 'record-card-open' : ''}} {{item.isHighlighted ? 'record-card-highlighted' : ''}}"
+              data-item-id="{{item.id}}"
+              data-row-key="{{item.rowKey}}"
               bindtap="handleCardTap"
               bindtouchstart="handleCardTouchStart"
               bindtouchend="handleCardTouchEnd"
