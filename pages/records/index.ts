@@ -40,9 +40,6 @@ interface RecordsGroupView {
 interface RecordsPageData {
   readonly pageReady: boolean
   readonly busy: boolean
-  readonly busyText: string
-  readonly statusText: string
-  readonly errorText: string
   readonly hasItems: boolean
   readonly hasPinnedItems: boolean
   readonly pinnedSectionCollapsed: boolean
@@ -330,12 +327,10 @@ function openSwipeActions(page: RecordsPageInstance, rowKey: string): void {
 
 async function runBusy<T>(
   page: RecordsPageInstance,
-  busyText: string,
   task: () => Promise<T>
 ): Promise<T> {
   page.setData({
     busy: true,
-    busyText,
   })
 
   try {
@@ -343,7 +338,6 @@ async function runBusy<T>(
   } finally {
     page.setData({
       busy: false,
-      busyText: '',
     })
   }
 }
@@ -351,7 +345,6 @@ async function runBusy<T>(
 async function refreshItems(
   page: RecordsPageInstance,
   options: {
-    readonly busyText?: string
     readonly silent?: boolean
   } = {}
 ): Promise<void> {
@@ -386,16 +379,13 @@ async function refreshItems(
     return
   }
 
-  await runBusy(page, options.busyText ?? '正在加载记录列表', loadSummaries)
+  await runBusy(page, loadSummaries)
 }
 
 Page<RecordsPageData, RecordsPageCustom>({
   data: {
     pageReady: false,
     busy: false,
-    busyText: '',
-    statusText: '',
-    errorText: '',
     hasItems: false,
     hasPinnedItems: false,
     pinnedSectionCollapsed: true,
@@ -416,9 +406,7 @@ Page<RecordsPageData, RecordsPageCustom>({
     const focusItemId = readQueryString(options, 'focusItemId')
     this.focusItemId = focusItemId ?? ''
     try {
-      await refreshItems(this, {
-        busyText: '读取记录',
-      })
+      await refreshItems(this)
 
       this.setData({
         pageReady: true,
@@ -569,7 +557,7 @@ Page<RecordsPageData, RecordsPageCustom>({
     this.focusItemId = ''
 
     try {
-      await runBusy(this, nextPinned ? '置顶' : '取消置顶', async () => {
+      await runBusy(this, async () => {
         await this.runtime.setPinned(itemId, nextPinned)
       })
 
@@ -597,7 +585,7 @@ Page<RecordsPageData, RecordsPageCustom>({
         return
       }
 
-      await runBusy(this, '删除', async () => {
+      await runBusy(this, async () => {
         await this.runtime.deleteItem(itemId)
       })
 
