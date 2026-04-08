@@ -20,8 +20,6 @@ import {
   buildLocationPresentation,
   buildNoteDisplayText,
   buildPhotoPresentation,
-  buildShareCardSubtitleFromItem,
-  buildShareCardTitleFromItem,
   extractAnchorValues,
   getSceneLabel,
   trimOptionalString,
@@ -40,14 +38,10 @@ type SharePrepareState = 'idle' | 'preparing' | 'ready' | 'failed'
 
 interface ShareSelectionItemView {
   readonly key: string
+  readonly label: string
   readonly checked: boolean
   readonly kind: ShareSelectionItemKind
   readonly fieldKey?: SceneFieldKey
-}
-
-interface ShareFieldSelectionView extends FrontendFieldView {
-  readonly selectionKey: string
-  readonly checked: boolean
 }
 
 interface RecordPageData {
@@ -75,23 +69,7 @@ interface RecordPageData {
   readonly canAttachPhoto: boolean
   readonly shareFlowVisible: boolean
   readonly shareSelectionItems: readonly ShareSelectionItemView[]
-  readonly sharePhotoChecked: boolean
-  readonly shareNoteChecked: boolean
-  readonly shareFieldSelectionViews: readonly ShareFieldSelectionView[]
-  readonly sharePreviewVisible: boolean
   readonly sharePrepareState: SharePrepareState
-  readonly sharePreviewShareId: string
-  readonly sharePreviewCardTitle: string
-  readonly sharePreviewCardSubtitle: string
-  readonly sharePreviewFieldViews: readonly FrontendFieldView[]
-  readonly sharePreviewHasFields: boolean
-  readonly sharePreviewHasLocation: boolean
-  readonly sharePreviewLocationTitle: string
-  readonly sharePreviewLocationSubtitle: string
-  readonly sharePreviewHasPhoto: boolean
-  readonly sharePreviewPhotoPath: string
-  readonly sharePreviewHasNote: boolean
-  readonly sharePreviewNoteText: string
 }
 
 interface RecordPageCustom {
@@ -100,7 +78,10 @@ interface RecordPageCustom {
   draftLocation?: LocationSnapshot
   draftPhotos: readonly PhotoAsset[]
   preparedShare: PreparedShareSnapshot | null
-  sharePreparationRequestId: number
+  shareCurrentFingerprint: string
+  sharePrepareTimer: number | null
+  sharePreparedSnapshotCache: Map<string, PreparedShareSnapshot>
+  sharePreparationTasks: Map<string, Promise<PreparedShareSnapshot>>
   pageDisposed: boolean
   onLoad(options: WechatMiniprogram.IAnyObject): Promise<void>
   onUnload(): void
@@ -121,9 +102,7 @@ interface RecordPageCustom {
   handleOpenShare(): Promise<void>
   handleCloseShareFlow(): void
   handleToggleShareSelection(event: ShareSelectionToggleEvent): void
-  handleGenerateSharePreview(): Promise<void>
   handleRetrySharePreparation(): Promise<void>
-  handleReturnToShareSelection(): void
 }
 
 type RecordPageInstance = WechatMiniprogram.Page.Instance<
@@ -161,16 +140,13 @@ type ShareSelectionToggleEvent = WechatMiniprogram.BaseEvent<
 >
 
 const DEFAULT_SCENE_TYPE: SceneType = 'default'
+const SHARE_COVER_IMAGE_URL = '/assets/share/share-cover.png'
 
 function resolveNavigationTitle(
   mode: RecordPageMode,
   sceneLabel: string,
-  shareFlowVisible: boolean
+  _shareFlowVisible: boolean
 ): string {
-  if (shareFlowVisible) {
-    return '选择分享内容'
-  }
-
   if (mode === 'create') {
     return `记下${sceneLabel}`
   }
@@ -200,67 +176,43 @@ function getActivePhoto(page: RecordPageInstance): PhotoAsset | undefined {
   return page.currentItem?.photos[0] ?? page.draftPhotos[0]
 }
 
-function buildEmptySharePreviewState(): Pick<
-  RecordPageData,
-  | 'sharePreviewVisible'
-  | 'sharePrepareState'
-  | 'sharePreviewShareId'
-  | 'sharePreviewCardTitle'
-  | 'sharePreviewCardSubtitle'
-  | 'sharePreviewFieldViews'
-  | 'sharePreviewHasFields'
-  | 'sharePreviewHasLocation'
-  | 'sharePreviewLocationTitle'
-  | 'sharePreviewLocationSubtitle'
-  | 'sharePreviewHasPhoto'
-  | 'sharePreviewPhotoPath'
-  | 'sharePreviewHasNote'
-  | 'sharePreviewNoteText'
-> {
-  return {
-    sharePreviewVisible: false,
-    sharePrepareState: 'idle',
-    sharePreviewShareId: '',
-    sharePreviewCardTitle: '',
-    sharePreviewCardSubtitle: '',
-    sharePreviewFieldViews: [],
-    sharePreviewHasFields: false,
-    sharePreviewHasLocation: false,
-    sharePreviewLocationTitle: '',
-    sharePreviewLocationSubtitle: '',
-    sharePreviewHasPhoto: false,
-    sharePreviewPhotoPath: '',
-    sharePreviewHasNote: false,
-    sharePreviewNoteText: '',
-  }
-}
-
 function buildClosedShareState(): Pick<
   RecordPageData,
   | 'shareFlowVisible'
   | 'shareSelectionItems'
-  | 'sharePhotoChecked'
-  | 'shareNoteChecked'
-  | 'shareFieldSelectionViews'
-> &
-  ReturnType<typeof buildEmptySharePreviewState> {
+  | 'sharePrepareState'
+> {
   return {
     shareFlowVisible: false,
     shareSelectionItems: [],
-    sharePhotoChecked: false,
-    shareNoteChecked: false,
-    shareFieldSelectionViews: [],
-    ...buildEmptySharePreviewState(),
+    sharePrepareState: 'idle',
   }
 }
 
-function invalidateSharePreparation(page: RecordPageInstance): void {
-  page.sharePreparationRequestId += 1
+function clearSharePrepareTimer(page: RecordPageInstance): void {
+  if (page.sharePrepareTimer !== null) {
+    clearTimeout(page.sharePrepareTimer)
+    page.sharePrepareTimer = null
+  }
+}
+
+function clearSharePreparationArtifacts(
+  page: RecordPageInstance,
+  options: {
+    readonly clearCache?: boolean
+  } = {}
+): void {
+  clearSharePrepareTimer(page)
+  page.shareCurrentFingerprint = ''
   page.preparedShare = null
+  if (options.clearCache) {
+    page.sharePreparedSnapshotCache.clear()
+    page.sharePreparationTasks.clear()
+  }
 }
 
 function resetShareState(page: RecordPageInstance): void {
-  invalidateSharePreparation(page)
+  clearSharePreparationArtifacts(page)
   page.setData(buildClosedShareState())
   syncNavigationTitle(page.data.pageMode, page.data.sceneLabel, false)
 }
@@ -309,7 +261,7 @@ function enterCreateMode(page: RecordPageInstance, sceneType: SceneType): void {
   page.currentItem = null
   page.draftLocation = undefined
   page.draftPhotos = []
-  page.preparedShare = null
+  clearSharePreparationArtifacts(page, { clearCache: true })
   page.setData(buildClosedShareState())
   syncRecordState(page, 'create', sceneType, {}, '')
 }
@@ -318,7 +270,7 @@ function enterViewMode(page: RecordPageInstance, item: Item): void {
   page.currentItem = item
   page.draftLocation = undefined
   page.draftPhotos = []
-  page.preparedShare = null
+  clearSharePreparationArtifacts(page, { clearCache: true })
   page.setData(buildClosedShareState())
   syncRecordState(page, 'view', item.sceneType, item.anchorValues, item.note)
 }
@@ -327,7 +279,7 @@ function enterEditMode(page: RecordPageInstance, item: Item): void {
   page.currentItem = item
   page.draftLocation = undefined
   page.draftPhotos = []
-  page.preparedShare = null
+  clearSharePreparationArtifacts(page, { clearCache: true })
   page.setData(buildClosedShareState())
   syncRecordState(page, 'edit', item.sceneType, item.anchorValues, item.note)
 }
@@ -497,6 +449,7 @@ function buildShareSelectionItems(item: Item): readonly ShareSelectionItemView[]
   if (photo) {
     selectionItems.push({
       key: 'photo',
+      label: '图片',
       checked: true,
       kind: 'photo',
     })
@@ -508,6 +461,7 @@ function buildShareSelectionItems(item: Item): readonly ShareSelectionItemView[]
   for (const fieldView of filledFieldViews) {
     selectionItems.push({
       key: `field:${fieldView.key}`,
+      label: fieldView.label,
       checked: true,
       kind: 'field',
       fieldKey: fieldView.key,
@@ -517,6 +471,7 @@ function buildShareSelectionItems(item: Item): readonly ShareSelectionItemView[]
   if (item.note.trim().length > 0) {
     selectionItems.push({
       key: 'note',
+      label: '备注',
       checked: true,
       kind: 'note',
     })
@@ -531,46 +486,11 @@ function cloneShareSelectionItems(
   return Object.freeze(selectionItems.map((selectionItem) => ({ ...selectionItem })))
 }
 
-function findShareSelectionItem(
-  selectionItems: readonly ShareSelectionItemView[],
-  key: string
-): ShareSelectionItemView | undefined {
-  return selectionItems.find((selectionItem) => selectionItem.key === key)
-}
-
-function buildShareFieldSelectionViews(
-  item: Item,
-  selectionItems: readonly ShareSelectionItemView[]
-): readonly ShareFieldSelectionView[] {
-  return Object.freeze(
-    buildFieldViews(item.sceneType, item.anchorValues)
-      .filter((fieldView) => fieldView.value.trim().length > 0)
-      .map((fieldView) => ({
-        ...fieldView,
-        selectionKey: `field:${fieldView.key}`,
-        checked: findShareSelectionItem(selectionItems, `field:${fieldView.key}`)?.checked ?? false,
-      }))
-  )
-}
-
 function buildShareSelectionState(
-  item: Item,
   selectionItems: readonly ShareSelectionItemView[]
-): Pick<
-  RecordPageData,
-  | 'shareSelectionItems'
-  | 'sharePhotoChecked'
-  | 'shareNoteChecked'
-  | 'shareFieldSelectionViews'
-> {
-  const photoSelection = findShareSelectionItem(selectionItems, 'photo')
-  const noteSelection = findShareSelectionItem(selectionItems, 'note')
-
+): Pick<RecordPageData, 'shareSelectionItems'> {
   return {
     shareSelectionItems: selectionItems,
-    sharePhotoChecked: photoSelection?.checked ?? false,
-    shareNoteChecked: noteSelection?.checked ?? false,
-    shareFieldSelectionViews: buildShareFieldSelectionViews(item, selectionItems),
   }
 }
 
@@ -608,138 +528,147 @@ function buildShareSnapshotSelection(
   })
 }
 
-function filterSharePreviewAnchorValues(
-  anchorValues: SceneFieldValueMap,
-  includedFieldKeys: readonly SceneFieldKey[]
-): SceneFieldValueMap {
-  if (includedFieldKeys.length === 0) {
-    return {}
-  }
+const SHARE_PREPARE_DEBOUNCE_MS = 320
 
-  const nextValues: SceneFieldValueMap = {}
-  const includedKeys = new Set(includedFieldKeys)
-
-  for (const key of Object.keys(anchorValues) as SceneFieldKey[]) {
-    if (!includedKeys.has(key)) {
-      continue
-    }
-
-    nextValues[key] = anchorValues[key] ?? ''
-  }
-
-  return nextValues
-}
-
-function buildSharePreviewState(
+function buildShareSelectionFingerprint(
   item: Item,
   selectionItems: readonly ShareSelectionItemView[]
-): Pick<
-  RecordPageData,
-  | 'sharePreviewCardTitle'
-  | 'sharePreviewCardSubtitle'
-  | 'sharePreviewFieldViews'
-  | 'sharePreviewHasFields'
-  | 'sharePreviewHasLocation'
-  | 'sharePreviewLocationTitle'
-  | 'sharePreviewLocationSubtitle'
-  | 'sharePreviewHasPhoto'
-  | 'sharePreviewPhotoPath'
-  | 'sharePreviewHasNote'
-  | 'sharePreviewNoteText'
-> {
-  const snapshotSelection = buildShareSnapshotSelection(selectionItems)
-  const previewAnchorValues = filterSharePreviewAnchorValues(
-    item.anchorValues,
-    snapshotSelection.includedFieldKeys
-  )
-  const previewNote = snapshotSelection.includeNote ? item.note : ''
-  const previewPhoto = snapshotSelection.includePhoto ? item.photos[0] : undefined
-  const previewFieldViews = buildFieldViews(item.sceneType, previewAnchorValues).filter(
-    (fieldView) => fieldView.value.trim().length > 0
-  )
-  const locationPresentation = buildLocationPresentation(item.location)
-  const photoPresentation = buildPhotoPresentation(previewPhoto, 'view')
-  const sharePreviewItem = {
-    sceneType: item.sceneType,
-    location: item.location,
-    anchorValues: previewAnchorValues,
-  }
+): string {
+  const selection = buildShareSnapshotSelection(selectionItems)
+  const sortedFieldKeys = [...selection.includedFieldKeys].sort()
 
-  return {
-    sharePreviewCardTitle: buildShareCardTitleFromItem(sharePreviewItem),
-    sharePreviewCardSubtitle: buildShareCardSubtitleFromItem(sharePreviewItem),
-    sharePreviewFieldViews: previewFieldViews,
-    sharePreviewHasFields: previewFieldViews.length > 0,
-    sharePreviewHasLocation: locationPresentation.hasLocation,
-    sharePreviewLocationTitle: locationPresentation.title,
-    sharePreviewLocationSubtitle: locationPresentation.subtitle,
-    sharePreviewHasPhoto: photoPresentation.hasPhoto,
-    sharePreviewPhotoPath: photoPresentation.photoPath,
-    sharePreviewHasNote: previewNote.trim().length > 0,
-    sharePreviewNoteText: buildNoteDisplayText(previewNote),
-  }
+  return [
+    item.id,
+    item.updatedAt.toString(),
+    selection.includePhoto ? 'photo:1' : 'photo:0',
+    selection.includeNote ? 'note:1' : 'note:0',
+    `fields:${sortedFieldKeys.join(',')}`,
+  ].join('|')
 }
 
-function syncSharePreviewState(
+function syncSharePrepareState(
+  page: RecordPageInstance,
+  sharePrepareState: SharePrepareState
+): void {
+  page.setData({
+    sharePrepareState,
+  })
+}
+
+function attachSharePreparationTask(
+  page: RecordPageInstance,
+  fingerprint: string,
+  task: Promise<PreparedShareSnapshot>
+): void {
+  void task
+    .then((preparedShare) => {
+      if (page.pageDisposed) {
+        return
+      }
+
+      page.sharePreparedSnapshotCache.set(fingerprint, preparedShare)
+      if (!page.data.shareFlowVisible || page.shareCurrentFingerprint !== fingerprint) {
+        return
+      }
+
+      page.preparedShare = preparedShare
+      syncSharePrepareState(page, 'ready')
+    })
+    .catch(async (error) => {
+      if (page.pageDisposed) {
+        return
+      }
+
+      if (!page.data.shareFlowVisible || page.shareCurrentFingerprint !== fingerprint) {
+        return
+      }
+
+      page.preparedShare = null
+      syncSharePrepareState(page, 'failed')
+      await handleAsyncError(page, error, '生成分享失败：')
+    })
+}
+
+function startSharePreparationTask(
   page: RecordPageInstance,
   item: Item,
   selectionItems: readonly ShareSelectionItemView[],
-  sharePrepareState: SharePrepareState,
-  preparedShare: PreparedShareSnapshot | null = null
+  fingerprint: string
 ): void {
-  page.setData({
-    sharePreviewVisible: true,
-    sharePrepareState,
-    sharePreviewShareId: preparedShare?.shareId ?? '',
-    ...buildSharePreviewState(item, selectionItems),
-  })
+  const cachedPreparedShare = page.sharePreparedSnapshotCache.get(fingerprint)
+  if (cachedPreparedShare) {
+    page.preparedShare = cachedPreparedShare
+    syncSharePrepareState(page, 'ready')
+    return
+  }
+
+  const existingTask = page.sharePreparationTasks.get(fingerprint)
+  if (existingTask) {
+    page.preparedShare = null
+    syncSharePrepareState(page, 'preparing')
+    attachSharePreparationTask(page, fingerprint, existingTask)
+    return
+  }
+
+  page.preparedShare = null
+  syncSharePrepareState(page, 'preparing')
+
+  const task = page.runtime
+    .prepareShareSnapshot(item, buildShareSnapshotSelection(selectionItems))
+    .finally(() => {
+      page.sharePreparationTasks.delete(fingerprint)
+    })
+
+  page.sharePreparationTasks.set(fingerprint, task)
+  attachSharePreparationTask(page, fingerprint, task)
+}
+
+function scheduleSharePreparation(
+  page: RecordPageInstance,
+  item: Item,
+  selectionItems: readonly ShareSelectionItemView[],
+  delayMs: number
+): void {
+  clearSharePrepareTimer(page)
+
+  const fingerprint = buildShareSelectionFingerprint(item, selectionItems)
+  page.shareCurrentFingerprint = fingerprint
+
+  const cachedPreparedShare = page.sharePreparedSnapshotCache.get(fingerprint)
+  if (cachedPreparedShare) {
+    page.preparedShare = cachedPreparedShare
+    syncSharePrepareState(page, 'ready')
+    return
+  }
+
+  syncSharePrepareState(page, 'preparing')
+  page.preparedShare = null
+
+  const existingTask = page.sharePreparationTasks.get(fingerprint)
+  if (existingTask) {
+    attachSharePreparationTask(page, fingerprint, existingTask)
+    return
+  }
+
+  page.sharePrepareTimer = setTimeout(() => {
+    page.sharePrepareTimer = null
+    if (page.pageDisposed || !page.data.shareFlowVisible || page.shareCurrentFingerprint !== fingerprint) {
+      return
+    }
+
+    startSharePreparationTask(page, item, selectionItems, fingerprint)
+  }, delayMs) as unknown as number
 }
 
 function openShareFlow(page: RecordPageInstance, item: Item): void {
-  invalidateSharePreparation(page)
+  clearSharePreparationArtifacts(page)
   const selectionItems = buildShareSelectionItems(item)
   page.setData({
     shareFlowVisible: true,
-    ...buildShareSelectionState(item, selectionItems),
-    ...buildEmptySharePreviewState(),
+    ...buildShareSelectionState(selectionItems),
+    sharePrepareState: 'preparing',
   })
-  syncNavigationTitle(page.data.pageMode, page.data.sceneLabel, true)
-}
-
-function isActiveSharePreparationRequest(
-  page: RecordPageInstance,
-  requestId: number
-): boolean {
-  return !page.pageDisposed && page.sharePreparationRequestId === requestId
-}
-
-async function prepareShareInBackground(
-  page: RecordPageInstance,
-  item: Item,
-  selectionItems: readonly ShareSelectionItemView[],
-  requestId: number
-): Promise<void> {
-  try {
-    const preparedShare = await page.runtime.prepareShareSnapshot(
-      item,
-      buildShareSnapshotSelection(selectionItems)
-    )
-
-    if (!isActiveSharePreparationRequest(page, requestId)) {
-      return
-    }
-
-    page.preparedShare = preparedShare
-    syncSharePreviewState(page, item, selectionItems, 'ready', preparedShare)
-  } catch (error) {
-    if (!isActiveSharePreparationRequest(page, requestId)) {
-      return
-    }
-
-    page.preparedShare = null
-    syncSharePreviewState(page, item, selectionItems, 'failed')
-    await handleAsyncError(page, error, '生成分享失败：')
-  }
+  scheduleSharePreparation(page, item, selectionItems, SHARE_PREPARE_DEBOUNCE_MS)
 }
 
 async function initializeRecordPage(
@@ -823,11 +752,19 @@ Page<RecordPageData, RecordPageCustom>({
   draftLocation: undefined,
   draftPhotos: [],
   preparedShare: null,
-  sharePreparationRequestId: 0,
+  shareCurrentFingerprint: '',
+  sharePrepareTimer: null,
+  sharePreparedSnapshotCache: new Map(),
+  sharePreparationTasks: new Map(),
   pageDisposed: false,
 
   async onLoad(options) {
     this.pageDisposed = false
+    this.shareCurrentFingerprint = ''
+    this.sharePrepareTimer = null
+    this.sharePreparedSnapshotCache = new Map()
+    this.sharePreparationTasks = new Map()
+    this.preparedShare = null
     try {
       await initializeRecordPage(this, options)
       this.setData({
@@ -843,7 +780,7 @@ Page<RecordPageData, RecordPageCustom>({
 
   onUnload() {
     this.pageDisposed = true
-    invalidateSharePreparation(this)
+    clearSharePreparationArtifacts(this, { clearCache: true })
   },
 
   onShareAppMessage() {
@@ -858,6 +795,7 @@ Page<RecordPageData, RecordPageCustom>({
     return {
       title: preparedShare.shareCardTitle,
       path: this.runtime.buildSharePath(preparedShare.shareId),
+      imageUrl: SHARE_COVER_IMAGE_URL,
     }
   },
 
@@ -1187,16 +1125,6 @@ Page<RecordPageData, RecordPageCustom>({
     }
 
     try {
-      const shouldContinue = await confirmAction(
-        '分享前提醒',
-        '隐私信息请勿分享给陌生人。你可以在下一步选择具体分享哪些内容。',
-        '继续'
-      )
-
-      if (!shouldContinue) {
-        return
-      }
-
       openShareFlow(this, this.currentItem)
     } catch (error) {
       await handleAsyncError(this, error, '打开分享失败：')
@@ -1212,7 +1140,7 @@ Page<RecordPageData, RecordPageCustom>({
   },
 
   handleToggleShareSelection(event) {
-    if (this.data.busy || !this.data.shareFlowVisible || this.data.sharePreviewVisible || !this.currentItem) {
+    if (this.data.busy || !this.data.shareFlowVisible || !this.currentItem) {
       return
     }
 
@@ -1230,50 +1158,21 @@ Page<RecordPageData, RecordPageCustom>({
         : selectionItem
     )
 
-    this.setData(buildShareSelectionState(this.currentItem, nextSelectionItems))
-  },
-
-  async handleGenerateSharePreview() {
-    if (this.data.busy || !this.data.shareFlowVisible || this.data.sharePreviewVisible || !this.currentItem) {
-      return
-    }
-
-    const selectionItems = cloneShareSelectionItems(this.data.shareSelectionItems)
-    const requestId = this.sharePreparationRequestId + 1
-    this.sharePreparationRequestId = requestId
-    this.preparedShare = null
-
-    syncSharePreviewState(this, this.currentItem, selectionItems, 'preparing')
-    void prepareShareInBackground(this, this.currentItem, selectionItems, requestId)
+    this.setData(buildShareSelectionState(nextSelectionItems))
+    scheduleSharePreparation(
+      this,
+      this.currentItem,
+      cloneShareSelectionItems(nextSelectionItems),
+      SHARE_PREPARE_DEBOUNCE_MS
+    )
   },
 
   async handleRetrySharePreparation() {
-    if (
-      this.data.busy ||
-      !this.data.shareFlowVisible ||
-      !this.data.sharePreviewVisible ||
-      !this.currentItem
-    ) {
+    if (this.data.busy || !this.data.shareFlowVisible || !this.currentItem) {
       return
     }
 
     const selectionItems = cloneShareSelectionItems(this.data.shareSelectionItems)
-    const requestId = this.sharePreparationRequestId + 1
-    this.sharePreparationRequestId = requestId
-    this.preparedShare = null
-
-    syncSharePreviewState(this, this.currentItem, selectionItems, 'preparing')
-    void prepareShareInBackground(this, this.currentItem, selectionItems, requestId)
-  },
-
-  handleReturnToShareSelection() {
-    if (!this.data.shareFlowVisible || !this.data.sharePreviewVisible) {
-      return
-    }
-
-    invalidateSharePreparation(this)
-    this.setData({
-      ...buildEmptySharePreviewState(),
-    })
+    scheduleSharePreparation(this, this.currentItem, selectionItems, 0)
   },
 })

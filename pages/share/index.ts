@@ -1,11 +1,12 @@
 import type {
+  LocationSnapshot,
   SharedImageState,
   SharedItem,
 } from '../../core/types/index'
 import { appRuntime, type AppRuntime } from '../common/runtime'
 import {
+  buildAnchorDisplayLines,
   buildFieldViews,
-  buildLocationPresentation,
   buildNoteDisplayText,
   buildPhotoPresentation,
   buildShareCardSubtitleFromItem,
@@ -26,8 +27,6 @@ interface SharePageData {
   readonly fieldViews: readonly FrontendFieldView[]
   readonly hasFilledFields: boolean
   readonly hasLocation: boolean
-  readonly locationTitle: string
-  readonly locationSubtitle: string
   readonly hasPhoto: boolean
   readonly photoPath: string
   readonly imageState: SharedImageState
@@ -82,21 +81,21 @@ function formatErrorMessage(error: unknown): string {
   return '发生未知错误。'
 }
 
-async function reLaunch(url: string): Promise<void> {
+async function previewPhoto(path: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    wx.reLaunch({
-      url,
+    wx.previewImage({
+      current: path,
+      urls: [path],
       success: () => resolve(),
       fail: (error) => reject(error),
     })
   })
 }
 
-async function previewPhoto(path: string): Promise<void> {
+async function reLaunch(url: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    wx.previewImage({
-      current: path,
-      urls: [path],
+    wx.reLaunch({
+      url,
       success: () => resolve(),
       fail: (error) => reject(error),
     })
@@ -113,8 +112,6 @@ function syncExpiredState(page: SharePageInstance): void {
     fieldViews: [],
     hasFilledFields: false,
     hasLocation: false,
-    locationTitle: '',
-    locationSubtitle: '',
     hasPhoto: false,
     photoPath: '',
     imageState: 'none',
@@ -133,8 +130,6 @@ function syncRequiresNetworkState(page: SharePageInstance): void {
     fieldViews: [],
     hasFilledFields: false,
     hasLocation: false,
-    locationTitle: '',
-    locationSubtitle: '',
     hasPhoto: false,
     photoPath: '',
     imageState: 'none',
@@ -145,28 +140,40 @@ function syncRequiresNetworkState(page: SharePageInstance): void {
 
 function syncReadyState(page: SharePageInstance, sharedItem: SharedItem): void {
   page.currentSharedItem = sharedItem
-  const fieldViews = buildFieldViews(sharedItem.sceneType, sharedItem.anchorValues).filter(
+  const detailFieldViews = buildFieldViews(sharedItem.sceneType, sharedItem.anchorValues).filter(
     (fieldView) => trimOptionalString(fieldView.value) !== undefined
   )
-  const locationPresentation = buildLocationPresentation(sharedItem.location)
   const photoPresentation = buildPhotoPresentation(sharedItem.photos[0], 'view')
+  const shareCardSubtitle = buildShareCardSubtitleFromItem(sharedItem)
+  const anchorSummary = buildAnchorDisplayLines(
+    sharedItem.sceneType,
+    sharedItem.anchorValues
+  ).join(' · ')
+  const shouldHideFieldDetails =
+    anchorSummary.length > 0 && shareCardSubtitle === anchorSummary
+  const fieldViews = shouldHideFieldDetails ? [] : detailFieldViews
 
   page.setData({
     pageStatus: 'ready',
     sceneLabel: getSceneLabel(sharedItem.sceneType),
     shareCardTitle: buildShareCardTitleFromItem(sharedItem),
-    shareCardSubtitle: buildShareCardSubtitleFromItem(sharedItem),
+    shareCardSubtitle,
     fieldViews,
     hasFilledFields: fieldViews.length > 0,
-    hasLocation: locationPresentation.hasLocation,
-    locationTitle: locationPresentation.title,
-    locationSubtitle: locationPresentation.subtitle,
+    hasLocation: isLocationAvailable(sharedItem.location),
     hasPhoto: photoPresentation.hasPhoto,
     photoPath: photoPresentation.photoPath,
     imageState: sharedItem.imageState,
     hasNote: trimOptionalString(sharedItem.note) !== undefined,
     noteDisplayText: buildNoteDisplayText(sharedItem.note),
   })
+}
+
+function isLocationAvailable(location: LocationSnapshot): boolean {
+  return (
+    trimOptionalString(location.name) !== undefined ||
+    trimOptionalString(location.address) !== undefined
+  )
 }
 
 async function hydrateSharedImage(page: SharePageInstance): Promise<void> {
@@ -195,8 +202,6 @@ Page<SharePageData, SharePageCustom>({
     fieldViews: [],
     hasFilledFields: false,
     hasLocation: false,
-    locationTitle: '',
-    locationSubtitle: '',
     hasPhoto: false,
     photoPath: '',
     imageState: 'none',
@@ -241,7 +246,7 @@ Page<SharePageData, SharePageCustom>({
     try {
       await reLaunch(FRONTEND_ROUTES.scene)
     } catch (error) {
-      showToastMessage(`回到首页失败：${formatErrorMessage(error)}`)
+      showToastMessage(`回到主页失败：${formatErrorMessage(error)}`)
     }
   },
 

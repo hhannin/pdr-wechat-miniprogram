@@ -50,6 +50,21 @@
   margin-bottom: 18rpx;
 }
 
+.record-strip-shell {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  margin: -18rpx -28rpx 18rpx;
+  padding: 18rpx 28rpx 14rpx;
+  background:
+    linear-gradient(180deg, rgba(251, 247, 241, 0.96), rgba(244, 239, 229, 0.92));
+  backdrop-filter: blur(16rpx);
+}
+
+.record-strip-shell .record-strip {
+  margin-bottom: 0;
+}
+
 .record-strip-copy {
   display: flex;
   align-items: center;
@@ -70,14 +85,13 @@
 
 .record-share-button {
   flex: 0 0 auto;
-  min-width: 144rpx;
+  min-width: 132rpx;
   padding: 0 22rpx;
-  height: 72rpx;
+  height: 68rpx;
   border-radius: 999rpx;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10rpx;
   background: rgba(31, 106, 70, 0.1);
   border: 1px solid rgba(31, 106, 70, 0.16);
   color: #174f35;
@@ -88,22 +102,10 @@
   pointer-events: none;
 }
 
-.record-share-icon {
-  width: 30rpx;
-  height: 30rpx;
-}
-
 .record-share-text {
   font-size: 25rpx;
   font-weight: 600;
   line-height: 1;
-}
-
-.share-flow-hint {
-  margin: -2rpx 4rpx 18rpx;
-  font-size: 23rpx;
-  line-height: 1.6;
-  color: rgba(34, 60, 43, 0.58);
 }
 
 .hero-subtitle,
@@ -120,51 +122,6 @@
   font-size: 31rpx;
   font-weight: 700;
   color: #223c2b;
-}
-
-.section-desc {
-  margin-top: 8rpx;
-}
-
-.share-banner-card {
-  padding-top: 28rpx;
-  padding-bottom: 28rpx;
-}
-
-.share-section-head {
-  margin-bottom: 18rpx;
-}
-
-.share-preview-shareid {
-  margin-top: 14rpx;
-  font-size: 23rpx;
-  line-height: 1.6;
-  color: rgba(34, 60, 43, 0.58);
-}
-
-.share-selection-check {
-  flex: 0 0 auto;
-  min-width: 118rpx;
-  padding: 12rpx 18rpx;
-  border-radius: 999rpx;
-  border: 1px solid rgba(34, 60, 43, 0.1);
-  background: rgba(244, 239, 229, 0.76);
-  color: rgba(34, 60, 43, 0.62);
-  font-size: 23rpx;
-  font-weight: 600;
-  text-align: center;
-}
-
-.share-selection-check-active {
-  border-color: rgba(31, 106, 70, 0.24);
-  background: rgba(31, 106, 70, 0.12);
-  color: #174f35;
-}
-
-.share-selection-check-locked {
-  border-color: rgba(199, 141, 63, 0.22);
-  background: rgba(199, 141, 63, 0.12);
-  color: #7a5225;
 }
 
 .photo-card {
@@ -489,50 +446,148 @@
   pointer-events: none;
 }
 
-.share-preview-overlay {
+.share-dialog-overlay {
   position: fixed;
   inset: 0;
   z-index: 24;
-  padding: 44rpx 28rpx calc(env(safe-area-inset-bottom) + 20rpx);
+  padding: 36rpx 28rpx;
   box-sizing: border-box;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
 }
 
-.share-preview-backdrop {
+.share-dialog-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(29, 32, 26, 0.3);
 }
 
-.share-preview-modal {
+.share-dialog {
   position: relative;
   width: 100%;
-  max-height: calc(100vh - 120rpx);
+  max-width: 620rpx;
   border-radius: 34rpx;
   overflow: hidden;
   border: 1px solid rgba(34, 60, 43, 0.08);
   box-shadow: 0 28rpx 72rpx rgba(44, 38, 27, 0.18);
   background: rgba(255, 251, 245, 0.98);
+}
+
+.share-dialog-header {
+  padding: 28rpx 28rpx 22rpx;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  border-bottom: 1px solid rgba(34, 60, 43, 0.06);
 }
 
-.share-preview-scroll {
+.share-dialog-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #223c2b;
+}
+
+.share-dialog-close {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(244, 239, 229, 0.88);
+  border: 1px solid rgba(34, 60, 43, 0.08);
+}
+
+.share-dialog-close-icon {
+  width: 28rpx;
+  height: 28rpx;
+}
+
+.share-dialog-body {
+  padding: 10rpx 28rpx 0;
+}
+
+.share-dialog-row {
+  min-height: 96rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 18rpx 0;
+}
+
+.share-dialog-row + .share-dialog-row {
+  border-top: 1px solid rgba(34, 60, 43, 0.06);
+}
+
+.share-dialog-copy {
   flex: 1;
-  min-height: 0;
+  min-width: 0;
 }
 
-.share-preview-shell {
-  padding: 24rpx 24rpx 18rpx;
+.share-dialog-label {
+  font-size: 28rpx;
+  line-height: 1.5;
+  font-weight: 600;
+  color: #223c2b;
+}
+
+.share-choice-circle {
+  flex: 0 0 auto;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid rgba(34, 60, 43, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 251, 245, 0.98);
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.9);
+}
+
+.share-choice-circle-active {
+  border-color: #1f6a46;
+  background: rgba(31, 106, 70, 0.08);
+}
+
+.share-choice-circle-locked {
+  border-color: rgba(34, 60, 43, 0.12);
+  background: rgba(244, 239, 229, 0.94);
+}
+
+.share-choice-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 999rpx;
+  background: #1f6a46;
+}
+
+.share-choice-circle-locked .share-choice-dot {
+  background: rgba(34, 60, 43, 0.28);
+}
+
+.share-dialog-footer {
+  padding: 18rpx 28rpx 28rpx;
+}
+
+.share-dialog-button-slot {
+  min-height: 84rpx;
+}
+
+.share-dialog-button {
+  width: 100%;
+  height: 84rpx;
   box-sizing: border-box;
 }
 
-.share-preview-actions {
-  padding: 12rpx;
-  border-top: 1px solid rgba(34, 60, 43, 0.08);
-  background: rgba(255, 251, 245, 0.98);
+.share-dialog-hint {
+  margin-top: 14rpx;
+  text-align: center;
+  font-size: 22rpx;
+  line-height: 1.5;
+  color: rgba(34, 60, 43, 0.52);
 }
 
 .share-loading-spinner {

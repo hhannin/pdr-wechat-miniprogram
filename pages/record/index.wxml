@@ -1,53 +1,23 @@
 <view class="page-shell" wx:if="{{pageReady}}">
-  <view class="record-strip">
-    <view class="record-strip-copy">
-      <view class="record-chip">{{sceneLabel}}</view>
-      <view class="record-chip record-chip-muted">{{isCreateMode ? '记下' : isEditMode ? '补充' : '已记'}}</view>
+  <view class="record-strip-shell">
+    <view class="record-strip">
+      <view class="record-strip-copy">
+        <view class="record-chip">{{sceneLabel}}</view>
+        <view class="record-chip record-chip-muted">{{isCreateMode ? '记下' : isEditMode ? '补充' : '已记'}}</view>
+      </view>
+      <view
+        wx:if="{{isViewMode}}"
+        class="record-share-button {{busy ? 'record-share-button-disabled' : ''}}"
+        bindtap="handleOpenShare"
+      >
+        <view class="record-share-text">分享</view>
+      </view>
     </view>
-    <view
-      wx:if="{{isViewMode && !shareFlowVisible}}"
-      class="record-share-button {{busy ? 'record-share-button-disabled' : ''}}"
-      bindtap="handleOpenShare"
-    >
-      <image
-        class="record-share-icon"
-        src="/assets/ui/share-line.svg"
-        mode="aspectFit"
-      />
-      <view class="record-share-text">分享</view>
-    </view>
-    <view
-      wx:elif="{{isViewMode}}"
-      class="record-share-button"
-      bindtap="handleCloseShareFlow"
-    >
-      <image
-        class="record-share-icon"
-        src="/assets/ui/close-line.svg"
-        mode="aspectFit"
-      />
-      <view class="record-share-text">结束</view>
-    </view>
-  </view>
-
-  <view class="share-flow-hint" wx:if="{{shareFlowVisible}}">
-    勾选这次要分享的内容
   </view>
 
   <view class="section-card photo-card">
-    <view class="section-head share-section-head" wx:if="{{shareFlowVisible && isViewMode && hasPhoto}}">
-      <view class="section-title">图片</view>
-      <view
-        class="share-selection-check {{sharePhotoChecked ? 'share-selection-check-active' : ''}}"
-        data-selection-key="photo"
-        bindtap="handleToggleShareSelection"
-      >
-        {{sharePhotoChecked ? '已选' : '不分享'}}
-      </view>
-    </view>
-
     <view
-      wx:if="{{(isCreateMode || canAttachPhoto) && !shareFlowVisible}}"
+      wx:if="{{isCreateMode || canAttachPhoto}}"
       class="photo-stage {{hasPhoto ? 'photo-stage-filled' : 'photo-stage-empty'}} photo-stage-tappable {{busy ? 'photo-stage-disabled' : ''}}"
       bindtap="handlePhotoTap"
     >
@@ -63,17 +33,6 @@
         <image class="photo-empty-icon" src="/assets/ui/camera-line.svg" mode="aspectFit" />
       </view>
     </view>
-
-    <view
-      wx:elif="{{shareFlowVisible && isViewMode}}"
-      class="photo-stage {{hasPhoto ? 'photo-stage-filled' : 'photo-stage-empty'}}"
-    >
-      <image wx:if="{{hasPhoto}}" class="photo-preview" src="{{photoPath}}" mode="aspectFit" />
-      <view wx:else class="photo-empty-shell">
-        <image class="photo-empty-icon" src="/assets/ui/camera-line.svg" mode="aspectFit" />
-      </view>
-    </view>
-
     <view
       wx:else
       class="photo-stage {{hasPhoto ? 'photo-stage-filled' : 'photo-stage-empty'}} {{hasPhoto ? 'photo-stage-tappable' : ''}}"
@@ -87,11 +46,6 @@
   </view>
 
   <view class="section-card location-card">
-    <view class="section-head share-section-head" wx:if="{{shareFlowVisible && isViewMode}}">
-      <view class="section-title">位置</view>
-      <view class="share-selection-check share-selection-check-locked">已包含</view>
-    </view>
-
     <view
       wx:if="{{isCreateMode}}"
       class="location-stage {{busy ? 'location-stage-disabled' : ''}}"
@@ -112,7 +66,6 @@
         </view>
       </view>
     </view>
-
     <view wx:else class="location-shell">
       <image class="location-icon" src="/assets/ui/map-pin.svg" mode="aspectFit" />
       <view class="location-copy">
@@ -120,35 +73,14 @@
         <view class="location-subtitle" wx:if="{{locationSubtitle}}">{{locationSubtitle}}</view>
       </view>
     </view>
-
-    <view class="location-footer" wx:if="{{hasLocation && !shareFlowVisible}}">
+    <view class="location-footer" wx:if="{{hasLocation}}">
       <button class="inline-button" bindtap="handleOpenLocation" disabled="{{busy || !hasLocation}}">
         去这里
       </button>
     </view>
   </view>
 
-  <view class="section-card" wx:if="{{shareFlowVisible && isViewMode && shareFieldSelectionViews.length > 0}}">
-    <block wx:for="{{shareFieldSelectionViews}}" wx:key="selectionKey" wx:for-item="fieldView">
-      <view class="field-block">
-        <view class="field-head">
-          <view class="field-title">{{fieldView.label}}</view>
-          <view
-            class="share-selection-check {{fieldView.checked ? 'share-selection-check-active' : ''}}"
-            data-selection-key="{{fieldView.selectionKey}}"
-            bindtap="handleToggleShareSelection"
-          >
-            {{fieldView.checked ? '已选' : '不分享'}}
-          </view>
-        </view>
-        <view class="field-static">
-          <view class="field-static-value">{{fieldView.displayValue}}</view>
-        </view>
-      </view>
-    </block>
-  </view>
-
-  <view class="section-card" wx:elif="{{fieldViews.length > 0 && (!isViewMode || hasFilledFields)}}">
+  <view class="section-card" wx:if="{{fieldViews.length > 0 && (!isViewMode || hasFilledFields)}}">
     <block wx:for="{{fieldViews}}" wx:key="key" wx:for-item="fieldView">
       <view class="field-block" wx:if="{{!isViewMode || fieldView.value}}">
         <view class="field-head">
@@ -191,23 +123,7 @@
     </block>
   </view>
 
-  <view class="section-card" wx:if="{{shareFlowVisible && isViewMode && hasNote}}">
-    <view class="section-head share-section-head">
-      <view class="section-title">备注</view>
-      <view
-        class="share-selection-check {{shareNoteChecked ? 'share-selection-check-active' : ''}}"
-        data-selection-key="note"
-        bindtap="handleToggleShareSelection"
-      >
-        {{shareNoteChecked ? '已选' : '不分享'}}
-      </view>
-    </view>
-    <view class="note-view">
-      <view class="note-text">{{noteDisplayText}}</view>
-    </view>
-  </view>
-
-  <view class="section-card" wx:elif="{{!isViewMode || hasNote}}">
+  <view class="section-card" wx:if="{{!isViewMode || hasNote}}">
     <view class="section-head" wx:if="{{!isViewMode}}">
       <view class="section-title">备注</view>
     </view>
@@ -242,19 +158,7 @@
     </view>
   </view>
 
-  <view class="action-dock" wx:elif="{{isViewMode && shareFlowVisible && !sharePreviewVisible}}">
-    <view class="action-stack action-stack-single">
-      <view
-        class="action-button action-button-primary {{busy ? 'action-button-disabled' : ''}}"
-        bindtap="handleGenerateSharePreview"
-        hover-class="action-button-pressed"
-      >
-        预览分享内容
-      </view>
-    </view>
-  </view>
-
-  <view class="action-dock" wx:elif="{{isViewMode}}">
+  <view class="action-dock" wx:elif="{{isViewMode && !shareFlowVisible}}">
     <view class="action-stack action-stack-dual">
       <view
         class="action-button action-button-primary {{busy ? 'action-button-disabled' : ''}}"
@@ -292,97 +196,68 @@
     </view>
   </view>
 
-  <view class="share-preview-overlay" wx:if="{{shareFlowVisible && sharePreviewVisible}}">
-    <view class="share-preview-backdrop"></view>
-    <view class="share-preview-modal">
-      <scroll-view class="share-preview-scroll" scroll-y>
-        <view class="share-preview-shell">
-          <view class="record-strip">
-            <view class="record-strip-copy">
-              <view class="record-chip">{{sceneLabel}}</view>
-              <view class="record-chip record-chip-muted">分享快照</view>
-            </view>
-          </view>
+  <view class="share-dialog-overlay" wx:if="{{shareFlowVisible}}">
+    <view class="share-dialog-backdrop"></view>
+    <view class="share-dialog">
+      <view class="share-dialog-header">
+        <view class="share-dialog-title">选择分享内容</view>
+        <view class="share-dialog-close" bindtap="handleCloseShareFlow">
+          <image class="share-dialog-close-icon" src="/assets/ui/close-line.svg" mode="aspectFit" />
+        </view>
+      </view>
 
-          <view class="section-card share-banner-card">
-            <view class="section-title">{{sharePreviewCardTitle}}</view>
-            <view class="section-desc" wx:if="{{sharePreviewCardSubtitle}}">{{sharePreviewCardSubtitle}}</view>
-            <view class="share-preview-shareid" wx:if="{{sharePrepareState === 'ready' && sharePreviewShareId}}">
-              7 天内可打开查看
-            </view>
+      <view class="share-dialog-body">
+        <view class="share-dialog-row share-dialog-row-locked">
+          <view class="share-dialog-copy">
+            <view class="share-dialog-label">位置</view>
           </view>
-
-          <view class="section-card photo-card" wx:if="{{sharePreviewHasPhoto}}">
-            <view class="photo-stage photo-stage-filled">
-              <image class="photo-preview" src="{{sharePreviewPhotoPath}}" mode="aspectFit" />
-            </view>
-          </view>
-
-          <view class="section-card location-card" wx:if="{{sharePreviewHasLocation}}">
-            <view class="location-shell">
-              <image class="location-icon" src="/assets/ui/map-pin.svg" mode="aspectFit" />
-              <view class="location-copy">
-                <view class="location-title">{{sharePreviewLocationTitle}}</view>
-                <view class="location-subtitle" wx:if="{{sharePreviewLocationSubtitle}}">
-                  {{sharePreviewLocationSubtitle}}
-                </view>
-              </view>
-            </view>
-          </view>
-
-          <view class="section-card" wx:if="{{sharePreviewHasFields}}">
-            <block wx:for="{{sharePreviewFieldViews}}" wx:key="key" wx:for-item="fieldView">
-              <view class="field-block">
-                <view class="field-head">
-                  <view class="field-title">{{fieldView.label}}</view>
-                </view>
-                <view class="field-static">
-                  <view class="field-static-value">{{fieldView.displayValue}}</view>
-                </view>
-              </view>
-            </block>
-          </view>
-
-          <view class="section-card" wx:if="{{sharePreviewHasNote}}">
-            <view class="note-view">
-              <view class="note-text">{{sharePreviewNoteText}}</view>
-            </view>
+          <view class="share-choice-circle share-choice-circle-active share-choice-circle-locked">
+            <view class="share-choice-dot"></view>
           </view>
         </view>
-      </scroll-view>
 
-      <view class="share-preview-actions">
-        <view class="action-stack action-stack-dual">
+        <block wx:for="{{shareSelectionItems}}" wx:key="key" wx:for-item="selectionItem">
           <view
-            class="action-button action-button-secondary"
-            bindtap="handleReturnToShareSelection"
-            hover-class="action-button-pressed"
+            class="share-dialog-row"
+            data-selection-key="{{selectionItem.key}}"
+            bindtap="handleToggleShareSelection"
           >
-            返回修改
+            <view class="share-dialog-copy">
+              <view class="share-dialog-label">{{selectionItem.label}}</view>
+            </view>
+            <view class="share-choice-circle {{selectionItem.checked ? 'share-choice-circle-active' : ''}}">
+              <view wx:if="{{selectionItem.checked}}" class="share-choice-dot"></view>
+            </view>
           </view>
+        </block>
+      </view>
 
+      <view class="share-dialog-footer">
+        <view class="share-dialog-button-slot">
           <button
             wx:if="{{sharePrepareState === 'ready'}}"
-            class="action-button action-button-primary action-button-native"
+            class="action-button action-button-primary action-button-native share-dialog-button"
             open-type="share"
             hover-class="action-button-pressed"
           >
-            发送分享
+            发送给好友
           </button>
 
-          <view wx:elif="{{sharePrepareState === 'preparing'}}" class="action-button action-button-primary action-button-loading">
+          <view wx:elif="{{sharePrepareState === 'preparing'}}" class="action-button action-button-primary action-button-loading share-dialog-button">
             <view class="share-loading-spinner"></view>
           </view>
 
           <view
             wx:else
-            class="action-button action-button-primary"
+            class="action-button action-button-primary share-dialog-button"
             bindtap="handleRetrySharePreparation"
             hover-class="action-button-pressed"
           >
-            重新准备
+            点击重试
           </view>
         </view>
+
+        <view class="share-dialog-hint">请勿分享给陌生人</view>
       </view>
     </view>
   </view>

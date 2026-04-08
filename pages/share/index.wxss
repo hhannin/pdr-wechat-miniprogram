@@ -1,15 +1,20 @@
 @import "../record/index.wxss";
 
 .page-shell {
-  padding-bottom: 48rpx;
+  padding-top: 18rpx;
+  padding-bottom: 224rpx;
 }
 
-.share-page-topbar {
-  grid-template-columns: 1fr auto 1fr;
+.share-banner-card {
+  padding-bottom: 22rpx;
 }
 
-.share-topbar-action-placeholder {
-  visibility: hidden;
+.share-summary-card .section-title {
+  margin-bottom: 6rpx;
+}
+
+.share-home-dock {
+  z-index: 16;
 }
 
 .share-image-placeholder {

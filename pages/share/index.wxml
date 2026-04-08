@@ -1,13 +1,4 @@
 <view class="page-shell">
-  <view class="share-topbar share-page-topbar">
-    <view class="share-topbar-action" bindtap="handleBackHome">
-      <image class="share-topbar-icon" src="/assets/ui/home-line.svg" mode="aspectFit" />
-      <view class="share-topbar-text">首页</view>
-    </view>
-    <view class="share-topbar-title">分享内容</view>
-    <view class="share-topbar-action share-topbar-action-placeholder"></view>
-  </view>
-
   <block wx:if="{{pageStatus === 'loading'}}">
     <view class="section-card loading-card">
       <view class="section-title">载入中</view>
@@ -41,8 +32,14 @@
         <view class="record-chip">{{sceneLabel}}</view>
         <view class="record-chip record-chip-muted">分享快照</view>
       </view>
+    </view>
+
+    <view class="section-card share-summary-card">
       <view class="section-title">{{shareCardTitle}}</view>
       <view class="section-desc" wx:if="{{shareCardSubtitle}}">{{shareCardSubtitle}}</view>
+      <view class="location-footer" wx:if="{{hasLocation}}">
+        <button class="inline-button" bindtap="handleOpenLocation">去这里</button>
+      </view>
     </view>
 
     <view class="section-card photo-card" wx:if="{{imageState !== 'none'}}">
@@ -67,19 +64,6 @@
       </view>
     </view>
 
-    <view class="section-card location-card" wx:if="{{hasLocation}}">
-      <view class="location-shell">
-        <image class="location-icon" src="/assets/ui/map-pin.svg" mode="aspectFit" />
-        <view class="location-copy">
-          <view class="location-title">{{locationTitle}}</view>
-          <view class="location-subtitle" wx:if="{{locationSubtitle}}">{{locationSubtitle}}</view>
-        </view>
-      </view>
-      <view class="location-footer">
-        <button class="inline-button" bindtap="handleOpenLocation">去这里</button>
-      </view>
-    </view>
-
     <view class="section-card" wx:if="{{hasFilledFields}}">
       <block wx:for="{{fieldViews}}" wx:key="key" wx:for-item="fieldView">
         <view class="field-block">
@@ -94,9 +78,24 @@
     </view>
 
     <view class="section-card" wx:if="{{hasNote}}">
+      <view class="section-head">
+        <view class="section-title">备注</view>
+      </view>
       <view class="note-view">
         <view class="note-text">{{noteDisplayText}}</view>
       </view>
     </view>
   </block>
+
+  <view class="action-dock share-home-dock">
+    <view class="action-stack action-stack-single">
+      <view
+        class="action-button action-button-primary"
+        bindtap="handleBackHome"
+        hover-class="action-button-pressed"
+      >
+        返回小程序主页
+      </view>
+    </view>
+  </view>
 </view>
