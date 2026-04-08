@@ -2,6 +2,7 @@ import type { SceneType } from '../../core/types/index'
 import { listSceneDefinitions } from '../../core/scene/index'
 import {
   buildCreateRecordUrl,
+  FRONTEND_ROUTES,
   FRONTEND_PRIMARY_NAV,
   type FrontendPrimaryNavItem,
 } from '../common/frontend-config'
@@ -17,6 +18,10 @@ interface SceneCardView {
 interface ScenePageData {
   readonly sceneCards: readonly SceneCardView[]
   readonly footerNavItems: readonly FooterNavItemView[]
+}
+
+interface ScenePageCustom {
+  onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent
 }
 
 interface FooterNavItemView extends FrontendPrimaryNavItem {
@@ -71,9 +76,19 @@ const FOOTER_NAV_ITEMS: readonly FooterNavItemView[] = FRONTEND_PRIMARY_NAV.map(
   isActive: navItem.key === 'scene',
 }))
 
-Page<ScenePageData, WechatMiniprogram.IAnyObject>({
+const SHARE_COVER_IMAGE_URL = '/assets/share/share-cover.png'
+
+Page<ScenePageData, ScenePageCustom>({
   data: {
     sceneCards: SCENE_CARDS,
     footerNavItems: FOOTER_NAV_ITEMS,
+  },
+
+  onShareAppMessage() {
+    return {
+      title: '记这里',
+      path: FRONTEND_ROUTES.scene,
+      imageUrl: SHARE_COVER_IMAGE_URL,
+    }
   },
 })

@@ -152,7 +152,7 @@ function resolveNavigationTitle(
   }
 
   if (mode === 'edit') {
-    return `补充${sceneLabel}`
+    return `编辑${sceneLabel}`
   }
 
   return sceneLabel
@@ -291,15 +291,26 @@ function formatErrorMessage(error: unknown): string {
       return '发生未知错误。'
     }
 
-    if (/Item\s+"[^"]+"\s+does not exist\./.test(trimmedMessage)) {
+    const normalizedMessage = trimmedMessage
+      .replace(/^cloud\.callFunction:fail\s*/i, '')
+      .replace(/^requestid:\s*[^ ]+\s*/i, '')
+      .replace(/^Error:\s*/i, '')
+      .split('\n')[0]
+      .trim()
+
+    if (normalizedMessage.length === 0) {
+      return '发生未知错误。'
+    }
+
+    if (/Item\s+"[^"]+"\s+does not exist\./.test(normalizedMessage)) {
       return '记录不存在或已删除。'
     }
 
-    if (/wxfile:\/\//i.test(trimmedMessage) || /\/Users\//.test(trimmedMessage)) {
+    if (/wxfile:\/\//i.test(normalizedMessage) || /\/Users\//.test(normalizedMessage)) {
       return '本地文件处理失败，请重试。'
     }
 
-    return trimmedMessage
+    return normalizedMessage
   }
 
   if (error instanceof Error && error.message.trim().length > 0) {
@@ -313,6 +324,15 @@ function formatErrorMessage(error: unknown): string {
     typeof (error as { readonly message?: unknown }).message === 'string'
   ) {
     return sanitizeUserFacingMessage((error as { readonly message: string }).message)
+  }
+
+  if (
+    error &&
+    typeof error === 'object' &&
+    'errMsg' in error &&
+    typeof (error as { readonly errMsg?: unknown }).errMsg === 'string'
+  ) {
+    return sanitizeUserFacingMessage((error as { readonly errMsg: string }).errMsg)
   }
 
   return '发生未知错误。'
@@ -793,7 +813,7 @@ Page<RecordPageData, RecordPageCustom>({
     }
 
     return {
-      title: preparedShare.shareCardTitle,
+      title: '分享快照',
       path: this.runtime.buildSharePath(preparedShare.shareId),
       imageUrl: SHARE_COVER_IMAGE_URL,
     }
@@ -884,7 +904,7 @@ Page<RecordPageData, RecordPageCustom>({
     }
 
     if (!this.data.isEditMode || !this.currentItem) {
-      showToastMessage('请先点击补充，再添加照片')
+      showToastMessage('请先点击编辑，再添加照片')
       return
     }
 
@@ -907,7 +927,7 @@ Page<RecordPageData, RecordPageCustom>({
         this.data.noteValue
       )
     } catch (error) {
-      await handleAsyncError(this, error, '补充照片失败：')
+      await handleAsyncError(this, error, '编辑照片失败：')
     }
   },
 

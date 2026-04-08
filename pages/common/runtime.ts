@@ -140,6 +140,11 @@ function buildShareSnapshotRequest(
   shareId: string,
   remotePhotos: readonly SharedRemotePhoto[]
 ): CreateShareSnapshotRequest {
+  const selectedAnchorValues = filterAnchorValues(
+    item.anchorValues,
+    selection.includedFieldKeys
+  )
+
   return Object.freeze({
     requestedShareId: shareId,
     sourceItemId: item.id,
@@ -147,11 +152,18 @@ function buildShareSnapshotRequest(
     updatedAt: item.updatedAt,
     sceneType: item.sceneType,
     location: item.location,
-    anchorValues: filterAnchorValues(item.anchorValues, selection.includedFieldKeys),
+    anchorValues: selectedAnchorValues,
     note: selection.includeNote ? item.note : '',
     remotePhotos,
-    shareCardTitle: buildShareCardTitleFromItem(item),
-    shareCardSubtitle: buildShareCardSubtitleFromItem(item),
+    shareCardTitle: buildShareCardTitleFromItem({
+      location: item.location,
+      sceneType: item.sceneType,
+    }),
+    shareCardSubtitle: buildShareCardSubtitleFromItem({
+      location: item.location,
+      sceneType: item.sceneType,
+      anchorValues: selectedAnchorValues,
+    }),
   })
 }
 

@@ -1,5 +1,12 @@
 <view class="page-shell">
   <block wx:if="{{pageStatus === 'loading'}}">
+    <view class="record-strip-shell">
+      <view class="record-strip">
+        <view class="record-strip-copy">
+          <view class="record-chip record-chip-muted">分享快照</view>
+        </view>
+      </view>
+    </view>
     <view class="section-card loading-card">
       <view class="section-title">载入中</view>
       <view class="section-desc">正在读取分享内容</view>
@@ -7,30 +14,40 @@
   </block>
 
   <block wx:elif="{{pageStatus === 'requires_network'}}">
-    <view class="section-card share-banner-card">
+    <view class="record-strip-shell">
       <view class="record-strip">
-        <view class="record-chip record-chip-muted">分享快照</view>
+        <view class="record-strip-copy">
+          <view class="record-chip record-chip-muted">分享快照</view>
+        </view>
       </view>
+    </view>
+    <view class="section-card share-banner-card">
       <view class="section-title">首次打开需要联网</view>
       <view class="section-desc">当前设备里还没有这份分享缓存，请联网后再打开一次。</view>
     </view>
   </block>
 
   <block wx:elif="{{pageStatus === 'expired'}}">
-    <view class="section-card share-banner-card">
+    <view class="record-strip-shell">
       <view class="record-strip">
-        <view class="record-chip record-chip-muted">分享快照</view>
+        <view class="record-strip-copy">
+          <view class="record-chip record-chip-muted">分享快照</view>
+        </view>
       </view>
+    </view>
+    <view class="section-card share-banner-card">
       <view class="section-title">分享已过期</view>
       <view class="section-desc">这份分享内容已经失效，当前不能继续查看。</view>
     </view>
   </block>
 
   <block wx:elif="{{pageStatus === 'ready'}}">
-    <view class="section-card share-banner-card">
+    <view class="record-strip-shell">
       <view class="record-strip">
-        <view class="record-chip">{{sceneLabel}}</view>
-        <view class="record-chip record-chip-muted">分享快照</view>
+        <view class="record-strip-copy">
+          <view class="record-chip">{{sceneLabel}}</view>
+          <view class="record-chip record-chip-muted">分享快照</view>
+        </view>
       </view>
     </view>
 

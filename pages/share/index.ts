@@ -15,7 +15,7 @@ import {
   trimOptionalString,
   type FrontendFieldView,
 } from '../common/frontend-presenters'
-import { FRONTEND_ROUTES } from '../common/frontend-config'
+import { buildShareUrl, FRONTEND_ROUTES } from '../common/frontend-config'
 
 type SharePageStatus = 'loading' | 'ready' | 'expired' | 'requires_network'
 
@@ -39,6 +39,7 @@ interface SharePageCustom {
   shareId: string
   currentSharedItem: SharedItem | null
   onLoad(options: WechatMiniprogram.IAnyObject): Promise<void>
+  onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent
   handleBackHome(): Promise<void>
   handleOpenLocation(): Promise<void>
   handlePhotoTap(): Promise<void>
@@ -49,6 +50,8 @@ type SharePageInstance = WechatMiniprogram.Page.Instance<
   SharePageData,
   SharePageCustom
 >
+
+const SHARE_COVER_IMAGE_URL = '/assets/share/share-cover.png'
 
 function showToastMessage(
   title: string,
@@ -239,6 +242,21 @@ Page<SharePageData, SharePageCustom>({
     } catch (error) {
       showToastMessage(`打开分享失败：${formatErrorMessage(error)}`)
       syncExpiredState(this)
+    }
+  },
+
+  onShareAppMessage() {
+    if (!this.shareId) {
+      return {
+        title: '分享快照',
+        path: FRONTEND_ROUTES.scene,
+      }
+    }
+
+    return {
+      title: '分享快照',
+      path: buildShareUrl(this.shareId),
+      imageUrl: SHARE_COVER_IMAGE_URL,
     }
   },
 

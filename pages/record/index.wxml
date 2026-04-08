@@ -3,14 +3,17 @@
     <view class="record-strip">
       <view class="record-strip-copy">
         <view class="record-chip">{{sceneLabel}}</view>
-        <view class="record-chip record-chip-muted">{{isCreateMode ? '记下' : isEditMode ? '补充' : '已记'}}</view>
+        <view class="record-chip record-chip-muted">{{isCreateMode ? '记下' : isEditMode ? '编辑' : '已记'}}</view>
       </view>
-      <view
-        wx:if="{{isViewMode}}"
-        class="record-share-button {{busy ? 'record-share-button-disabled' : ''}}"
-        bindtap="handleOpenShare"
-      >
-        <view class="record-share-text">分享</view>
+      <view class="record-share-slot">
+        <view
+          wx:if="{{isViewMode}}"
+          class="record-share-button {{busy ? 'record-share-button-disabled' : ''}}"
+          bindtap="handleOpenShare"
+        >
+          <view class="record-share-text">分享快照</view>
+        </view>
+        <view wx:else class="record-share-placeholder"></view>
       </view>
     </view>
   </view>
@@ -165,7 +168,7 @@
         bindtap="handleEnterEdit"
         hover-class="action-button-pressed"
       >
-        补充
+        编辑
       </view>
       <view
         class="action-button action-button-danger {{busy ? 'action-button-disabled' : ''}}"
@@ -184,7 +187,7 @@
         bindtap="handleSaveEdit"
         hover-class="action-button-pressed"
       >
-        {{busy ? '存好中' : '存好'}}
+        {{busy ? '保存中' : '保存'}}
       </view>
       <view
         class="action-button action-button-secondary {{busy ? 'action-button-disabled' : ''}}"
@@ -211,8 +214,8 @@
           <view class="share-dialog-copy">
             <view class="share-dialog-label">位置</view>
           </view>
-          <view class="share-choice-circle share-choice-circle-active share-choice-circle-locked">
-            <view class="share-choice-dot"></view>
+          <view class="share-choice-box share-choice-box-active share-choice-box-locked">
+            <view class="share-choice-check">✓</view>
           </view>
         </view>
 
@@ -225,8 +228,8 @@
             <view class="share-dialog-copy">
               <view class="share-dialog-label">{{selectionItem.label}}</view>
             </view>
-            <view class="share-choice-circle {{selectionItem.checked ? 'share-choice-circle-active' : ''}}">
-              <view wx:if="{{selectionItem.checked}}" class="share-choice-dot"></view>
+            <view class="share-choice-box {{selectionItem.checked ? 'share-choice-box-active' : ''}}">
+              <view wx:if="{{selectionItem.checked}}" class="share-choice-check">✓</view>
             </view>
           </view>
         </block>
@@ -257,7 +260,7 @@
           </view>
         </view>
 
-        <view class="share-dialog-hint">请勿分享给陌生人</view>
+        <view class="share-dialog-hint">敏感信息请勿分享给陌生人</view>
       </view>
     </view>
   </view>

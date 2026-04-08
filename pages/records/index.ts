@@ -7,6 +7,7 @@ import {
 } from '../common/frontend-presenters'
 import {
   buildRecordDetailUrl,
+  FRONTEND_ROUTES,
   FRONTEND_PRIMARY_NAV,
   type FrontendPrimaryNavItem,
 } from '../common/frontend-config'
@@ -54,6 +55,7 @@ interface RecordsPageCustom {
   touchStartItemId: string
   onLoad(options: WechatMiniprogram.IAnyObject): Promise<void>
   onShow(): void
+  onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent
   onPullDownRefresh(): Promise<void>
   handleCardTouchStart(event: ItemTouchEvent): void
   handleCardTouchEnd(event: ItemTouchEvent): void
@@ -89,6 +91,8 @@ const FOOTER_NAV_ITEMS: readonly FooterNavItemView[] = FRONTEND_PRIMARY_NAV.map(
   ...navItem,
   isActive: navItem.key === 'records',
 }))
+
+const SHARE_COVER_IMAGE_URL = '/assets/share/share-cover.png'
 
 function formatDateKey(timestampMs: number): string {
   const date = new Date(timestampMs)
@@ -380,6 +384,14 @@ Page<RecordsPageData, RecordsPageCustom>({
     }).catch((error) => {
       showToastMessage(`刷新记录失败：${formatErrorMessage(error)}`)
     })
+  },
+
+  onShareAppMessage() {
+    return {
+      title: '记这里',
+      path: FRONTEND_ROUTES.scene,
+      imageUrl: SHARE_COVER_IMAGE_URL,
+    }
   },
 
   async onPullDownRefresh() {

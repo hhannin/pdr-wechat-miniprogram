@@ -46,6 +46,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 68rpx;
   gap: 12rpx;
   margin-bottom: 18rpx;
 }
@@ -83,11 +84,19 @@
   color: #7a5225;
 }
 
-.record-share-button {
-  flex: 0 0 auto;
-  min-width: 132rpx;
-  padding: 0 22rpx;
+.record-share-slot {
+  flex: 0 0 176rpx;
+  width: 176rpx;
   height: 68rpx;
+}
+
+.record-share-button,
+.record-share-placeholder {
+  width: 100%;
+  height: 100%;
+}
+
+.record-share-button {
   border-radius: 999rpx;
   display: inline-flex;
   align-items: center;
@@ -95,6 +104,7 @@
   background: rgba(31, 106, 70, 0.1);
   border: 1px solid rgba(31, 106, 70, 0.16);
   color: #174f35;
+  box-sizing: border-box;
 }
 
 .record-share-button-disabled {
@@ -102,8 +112,12 @@
   pointer-events: none;
 }
 
+.record-share-placeholder {
+  visibility: hidden;
+}
+
 .record-share-text {
-  font-size: 25rpx;
+  font-size: 24rpx;
   font-weight: 600;
   line-height: 1;
 }
@@ -534,11 +548,11 @@
   color: #223c2b;
 }
 
-.share-choice-circle {
+.share-choice-box {
   flex: 0 0 auto;
   width: 44rpx;
   height: 44rpx;
-  border-radius: 999rpx;
+  border-radius: 12rpx;
   border: 2rpx solid rgba(34, 60, 43, 0.16);
   display: flex;
   align-items: center;
@@ -547,25 +561,25 @@
   box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.9);
 }
 
-.share-choice-circle-active {
+.share-choice-box-active {
   border-color: #1f6a46;
   background: rgba(31, 106, 70, 0.08);
 }
 
-.share-choice-circle-locked {
+.share-choice-box-locked {
   border-color: rgba(34, 60, 43, 0.12);
   background: rgba(244, 239, 229, 0.94);
 }
 
-.share-choice-dot {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 999rpx;
-  background: #1f6a46;
+.share-choice-check {
+  font-size: 26rpx;
+  line-height: 1;
+  font-weight: 700;
+  color: #1f6a46;
 }
 
-.share-choice-circle-locked .share-choice-dot {
-  background: rgba(34, 60, 43, 0.28);
+.share-choice-box-locked .share-choice-check {
+  color: rgba(34, 60, 43, 0.36);
 }
 
 .share-dialog-footer {
@@ -573,12 +587,17 @@
 }
 
 .share-dialog-button-slot {
+  width: 100%;
   min-height: 84rpx;
 }
 
 .share-dialog-button {
   width: 100%;
+  min-width: 100%;
+  max-width: 100%;
   height: 84rpx;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -597,6 +616,10 @@
   border: 4rpx solid rgba(255, 250, 243, 0.38);
   border-top-color: #fffaf3;
   animation: share-spin 0.9s linear infinite;
+}
+
+button.share-dialog-button::after {
+  border: none;
 }
 
 @keyframes share-spin {
