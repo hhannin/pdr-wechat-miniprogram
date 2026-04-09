@@ -4,6 +4,12 @@
       <view class="record-strip-copy">
         <view class="record-chip">{{sceneLabel}}</view>
         <view class="record-chip record-chip-muted">{{isCreateMode ? '记下' : isEditMode ? '编辑' : '已记'}}</view>
+        <view
+          wx:if="{{showReminderChip}}"
+          class="record-chip {{reminderPresentationState === 'active' ? 'record-chip-reminder-active' : 'record-chip-reminder-muted'}}"
+        >
+          提醒
+        </view>
       </view>
       <view class="record-share-slot">
         <view
@@ -80,6 +86,39 @@
       <button class="inline-button" bindtap="handleOpenLocation" disabled="{{busy || !hasLocation}}">
         去这里
       </button>
+    </view>
+  </view>
+
+  <view class="section-card reminder-card" wx:if="{{!isViewMode || hasReminder}}">
+    <view
+      wx:if="{{!isViewMode}}"
+      class="reminder-stage {{busy ? 'reminder-stage-disabled' : ''}}"
+      bindtap="handleOpenReminderDialog"
+    >
+      <view
+        wx:if="{{hasReminder}}"
+        class="stage-clear"
+        catchtap="handleClearReminder"
+      >
+        ×
+      </view>
+      <view class="reminder-copy">
+        <view class="section-title">提醒时间</view>
+        <view class="reminder-value {{hasReminder ? (reminderPresentationState === 'active' ? 'reminder-value-active' : 'reminder-value-inactive') : 'placeholder-text'}}">
+          {{hasReminder ? reminderDisplayText : '选一个提醒时间'}}
+        </view>
+      </view>
+    </view>
+
+    <view wx:else class="reminder-view">
+      <view class="section-head">
+        <view class="section-title">提醒时间</view>
+      </view>
+      <view class="field-static">
+        <view class="field-static-value {{reminderPresentationState === 'active' ? 'reminder-value-active' : 'reminder-value-inactive'}}">
+          {{reminderDisplayText}}
+        </view>
+      </view>
     </view>
   </view>
 
@@ -261,6 +300,48 @@
         </view>
 
         <view class="share-dialog-hint">敏感信息请勿分享给陌生人</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="share-dialog-overlay" wx:if="{{reminderDialogVisible}}">
+    <view class="share-dialog-backdrop"></view>
+    <view class="share-dialog">
+      <view class="share-dialog-header">
+        <view class="share-dialog-title">提醒时间</view>
+        <view class="share-dialog-close" bindtap="handleCloseReminderDialog">
+          <image class="share-dialog-close-icon" src="/assets/ui/close-line.svg" mode="aspectFit" />
+        </view>
+      </view>
+
+      <view class="share-dialog-body">
+        <picker mode="date" value="{{reminderPickerDate}}" bindchange="handleReminderDateChange">
+          <view class="share-dialog-row">
+            <view class="share-dialog-copy">
+              <view class="share-dialog-label">日期</view>
+            </view>
+            <view class="share-dialog-value">{{reminderPickerDate}}</view>
+          </view>
+        </picker>
+
+        <picker mode="time" value="{{reminderPickerTime}}" bindchange="handleReminderTimeChange">
+          <view class="share-dialog-row">
+            <view class="share-dialog-copy">
+              <view class="share-dialog-label">时间</view>
+            </view>
+            <view class="share-dialog-value">{{reminderPickerTime}}</view>
+          </view>
+        </picker>
+      </view>
+
+      <view class="share-dialog-footer">
+        <view
+          class="action-button action-button-primary share-dialog-button"
+          bindtap="handleReminderConfirm"
+          hover-class="action-button-pressed"
+        >
+          确定
+        </view>
       </view>
     </view>
   </view>

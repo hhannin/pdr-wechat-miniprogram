@@ -3,10 +3,12 @@ import type {
   Item,
   LocationSnapshot,
   PhotoAsset,
+  ReminderSyncState,
   SceneFieldControl,
   SceneFieldKey,
   SceneFieldValueMap,
   SceneType,
+  TimestampMs,
 } from '../../core/types/index'
 import {
   getSceneDefinition,
@@ -50,6 +52,8 @@ export interface PhotoPresentation {
   readonly photoPath: string
   readonly photoMeta: string
 }
+
+export type ReminderPresentationState = 'none' | 'active' | 'inactive'
 
 export function formatTimestamp(timestampMs: number): string {
   const date = new Date(timestampMs)
@@ -249,6 +253,35 @@ export function buildSummaryAnchorsText(summary: ItemSummary): string {
 
 export function buildNoteDisplayText(note: string): string {
   return trimOptionalString(note) ?? ''
+}
+
+export function isReminderFuture(
+  reminderAt: TimestampMs | undefined,
+  now: TimestampMs = Date.now()
+): boolean {
+  return typeof reminderAt === 'number' && reminderAt > now
+}
+
+export function buildReminderDisplayText(
+  reminderAt: TimestampMs | undefined
+): string {
+  return typeof reminderAt === 'number' ? formatTimestamp(reminderAt) : ''
+}
+
+export function resolveReminderPresentationState(
+  reminderAt: TimestampMs | undefined,
+  reminderSyncState: ReminderSyncState | undefined,
+  now: TimestampMs = Date.now()
+): ReminderPresentationState {
+  if (typeof reminderAt !== 'number') {
+    return 'none'
+  }
+
+  if (reminderAt > now && reminderSyncState === 'scheduled') {
+    return 'active'
+  }
+
+  return 'inactive'
 }
 
 export function buildShareCardTitleFromItem(item: Pick<Item, 'location' | 'sceneType'>): string {

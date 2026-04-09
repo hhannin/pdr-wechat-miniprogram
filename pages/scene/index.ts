@@ -5,6 +5,7 @@ import {
   FRONTEND_ROUTES,
   FRONTEND_PRIMARY_NAV,
   type FrontendPrimaryNavItem,
+  type ScenePageEntryState,
 } from '../common/frontend-config'
 
 interface SceneCardView {
@@ -21,6 +22,7 @@ interface ScenePageData {
 }
 
 interface ScenePageCustom {
+  onLoad(options: WechatMiniprogram.IAnyObject): void
   onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent
 }
 
@@ -78,10 +80,31 @@ const FOOTER_NAV_ITEMS: readonly FooterNavItemView[] = FRONTEND_PRIMARY_NAV.map(
 
 const SHARE_COVER_IMAGE_URL = '/assets/share/share-cover.png'
 
+function showToastMessage(
+  title: string,
+  icon: WechatMiniprogram.ShowToastOption['icon'] = 'none'
+): void {
+  wx.showToast({
+    title,
+    icon,
+    duration: 1800,
+  })
+}
+
+function normalizeSceneEntryState(value: unknown): ScenePageEntryState | undefined {
+  return value === 'missing_reminder_item' ? 'missing_reminder_item' : undefined
+}
+
 Page<ScenePageData, ScenePageCustom>({
   data: {
     sceneCards: SCENE_CARDS,
     footerNavItems: FOOTER_NAV_ITEMS,
+  },
+
+  onLoad(options) {
+    if (normalizeSceneEntryState(options.entryState) === 'missing_reminder_item') {
+      showToastMessage('对应记录已删除')
+    }
   },
 
   onShareAppMessage() {

@@ -1,23 +1,27 @@
-import type {
-  CreateItemInput,
-  CreateShareSnapshotRequest,
-  CreateShareSnapshotResult,
-  GetShareSnapshotResult,
-  Item,
-  ItemId,
-  ItemSummary,
-  LocationSelectionSource,
-  LocationSnapshot,
-  PhotoAsset,
-  PreparedShareSnapshot,
-  SceneFieldValueMap,
-  SceneFieldKey,
-  ShareSnapshotPayload,
-  ShareSnapshotSelection,
-  SharedItem,
-  SharedRemotePhoto,
-  TimestampMs,
-  UpdateEditableItemInput,
+import {
+  ITEM_SCHEMA_VERSION,
+  type CreateItemInput,
+  type CreateShareSnapshotRequest,
+  type CreateShareSnapshotResult,
+  type GetShareSnapshotResult,
+  type Item,
+  type ItemId,
+  type ItemSummary,
+  type LocationSelectionSource,
+  type LocationSnapshot,
+  type PhotoAsset,
+  type PreparedShareSnapshot,
+  type ReminderSyncState,
+  type SceneFieldValueMap,
+  type SceneFieldKey,
+  type ShareSnapshotPayload,
+  type ShareSnapshotSelection,
+  type SharedItem,
+  type SharedRemotePhoto,
+  type SyncReminderJobRequest,
+  type SyncReminderJobResult,
+  type TimestampMs,
+  type UpdateEditableItemInput,
 } from '../../core/types/index'
 import {
   ItemDomainError,
@@ -65,8 +69,13 @@ export interface AppRuntimeOptions {
   readonly idGenerator?: () => ItemId
 }
 
+export interface CreateRecordOptions {
+  readonly forcedItemId?: ItemId
+}
+
 const CREATE_SHARE_SNAPSHOT_FUNCTION_NAME = 'createShareSnapshot'
 const GET_SHARE_SNAPSHOT_FUNCTION_NAME = 'getShareSnapshot'
+const SYNC_REMINDER_JOB_FUNCTION_NAME = 'syncReminderJob'
 
 function createShareId(now: number): string {
   return `share_${now.toString(36)}_${Math.random().toString(36).slice(2, 14)}`
@@ -126,6 +135,8 @@ function buildPreparedPreviewItem(
     sourceItemId: item.id,
     anchorValues: selectedAnchorValues,
     note: selection.includeNote ? item.note : '',
+    reminderAt: selection.includeReminder ? item.reminderAt : undefined,
+    reminderSyncState: selection.includeReminder ? item.reminderSyncState : undefined,
     photos: selectedPhotos,
     hasRemoteImage,
     imageState: selectedPhotos.length > 0 ? 'ready' : hasRemoteImage ? 'pending' : 'none',
@@ -154,6 +165,7 @@ function buildShareSnapshotRequest(
     location: item.location,
     anchorValues: selectedAnchorValues,
     note: selection.includeNote ? item.note : '',
+    reminderAt: selection.includeReminder ? item.reminderAt : undefined,
     remotePhotos,
     shareCardTitle: buildShareCardTitleFromItem({
       location: item.location,
@@ -169,13 +181,15 @@ function buildShareSnapshotRequest(
 
 function buildSharedItemFromSnapshot(snapshot: ShareSnapshotPayload): SharedItem {
   return freezeSharedItem({
-    schemaVersion: 1,
+    schemaVersion: ITEM_SCHEMA_VERSION,
     id: snapshot.sourceItemId,
     createdAt: snapshot.createdAt,
     updatedAt: snapshot.updatedAt,
     sceneType: snapshot.sceneType,
     anchorValues: snapshot.anchorValues,
     note: snapshot.note,
+    reminderAt: snapshot.reminderAt,
+    reminderSyncState: undefined,
     location: snapshot.location,
     photos: [],
     shareId: snapshot.shareId,
@@ -258,12 +272,17 @@ export class AppRuntime {
     return this.itemService.getById(itemId)
   }
 
-  async create(input: CreateRecordInput): Promise<Item> {
+  async create(
+    input: CreateRecordInput,
+    options: CreateRecordOptions = {}
+  ): Promise<Item> {
+    const itemId = options.forcedItemId ?? this.idGenerator()
     if (!input.photos || input.photos.length === 0) {
-      return this.itemService.create(input)
+      return this.itemService.create(input, {
+        idGenerator: () => itemId,
+      })
     }
 
-    const itemId = this.idGenerator()
     const draftItem = createItem(input, {
       now: this.now,
       idGenerator: () => itemId,
@@ -404,14 +423,39 @@ export class AppRuntime {
     })
   }
 
+  createItemId(): ItemId {
+    return this.idGenerator()
+  }
+
+  async getNetworkType(): Promise<
+    WechatMiniprogram.GetNetworkTypeSuccessCallbackResult['networkType']
+  > {
+    return getNetworkType()
+  }
+
   buildEditableInput(
     anchorValues: SceneFieldValueMap,
-    note: string
+    note: string,
+    reminder?: {
+      readonly reminderAt: TimestampMs | null
+      readonly reminderSyncState?: ReminderSyncState
+    }
   ): UpdateEditableItemInput {
-    return Object.freeze({
+    if (reminder) {
+      return Object.freeze({
+        anchorValues,
+        note,
+        reminderAt: reminder.reminderAt,
+        reminderSyncState: reminder.reminderSyncState,
+      })
+    }
+
+    const nextInput: UpdateEditableItemInput = {
       anchorValues,
       note,
-    })
+    }
+
+    return Object.freeze(nextInput)
   }
 
   async prepareShareSnapshot(
@@ -472,6 +516,17 @@ export class AppRuntime {
 
   buildSharePath(shareId: string): string {
     return buildShareUrl(shareId)
+  }
+
+  async syncReminderJob(
+    request: SyncReminderJobRequest
+  ): Promise<SyncReminderJobResult> {
+    const result = await wx.cloud.callFunction({
+      name: SYNC_REMINDER_JOB_FUNCTION_NAME,
+      data: request,
+    })
+
+    return result.result as SyncReminderJobResult
   }
 
   async openSharedSnapshot(shareId: string): Promise<OpenSharedSnapshotResult> {

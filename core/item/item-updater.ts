@@ -23,10 +23,24 @@ export function updateEditableItem(
 
   const nextNote =
     input.note === undefined ? currentItem.note : normalizeNote(input.note)
+  const nextReminderAt =
+    input.reminderAt === undefined
+      ? currentItem.reminderAt
+      : input.reminderAt === null
+        ? undefined
+        : normalizeTimestampMs(input.reminderAt, 'Item reminderAt')
+  const nextReminderSyncState =
+    input.reminderAt === undefined && input.reminderSyncState === undefined
+      ? currentItem.reminderSyncState
+      : nextReminderAt === undefined
+        ? undefined
+        : input.reminderSyncState ?? currentItem.reminderSyncState ?? 'unscheduled'
 
   const hasChanges =
     nextNote !== currentItem.note ||
-    !areSceneFieldValuesEqual(nextAnchorValues, currentItem.anchorValues)
+    !areSceneFieldValuesEqual(nextAnchorValues, currentItem.anchorValues) ||
+    nextReminderAt !== currentItem.reminderAt ||
+    nextReminderSyncState !== currentItem.reminderSyncState
 
   if (!hasChanges) {
     return currentItem
@@ -41,6 +55,8 @@ export function updateEditableItem(
     ...currentItem,
     anchorValues: nextAnchorValues,
     note: nextNote,
+    reminderAt: nextReminderAt,
+    reminderSyncState: nextReminderSyncState,
     updatedAt: computeNextUpdatedAt(currentItem.updatedAt, now),
   })
 }

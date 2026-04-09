@@ -1,5 +1,5 @@
 import type { ItemId, ItemSummary, TimestampMs } from '../../core/types'
-import { SCENE_TYPES } from '../../core/types'
+import { REMINDER_SYNC_STATES, SCENE_TYPES } from '../../core/types'
 import { normalizeItemId, normalizeTimestampMs } from '../../core/item'
 import { JsonFileStore } from './json-file-store'
 import { StorageError } from './storage-errors'
@@ -94,6 +94,15 @@ function normalizeItemSummary(summary: unknown): ItemSummary {
     pinnedAt:
       typeof rawSummary.pinnedAt === 'number' && rawSummary.pinnedAt > 0
         ? normalizeTimestampMs(rawSummary.pinnedAt, 'Stored summary pinnedAt')
+        : undefined,
+    reminderAt:
+      typeof rawSummary.reminderAt === 'number' && rawSummary.reminderAt > 0
+        ? normalizeTimestampMs(rawSummary.reminderAt, 'Stored summary reminderAt')
+        : undefined,
+    reminderSyncState:
+      typeof rawSummary.reminderSyncState === 'string' &&
+      (REMINDER_SYNC_STATES as readonly string[]).includes(rawSummary.reminderSyncState)
+        ? (rawSummary.reminderSyncState as ItemSummary['reminderSyncState'])
         : undefined,
     locationName: normalizeRequiredString(rawSummary.locationName, 'locationName'),
     address: normalizeRequiredString(rawSummary.address, 'address'),

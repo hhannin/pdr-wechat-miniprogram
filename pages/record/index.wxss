@@ -84,6 +84,16 @@
   color: #7a5225;
 }
 
+.record-chip-reminder-active {
+  background: rgba(31, 106, 70, 0.12);
+  color: #1f6a46;
+}
+
+.record-chip-reminder-muted {
+  background: rgba(34, 60, 43, 0.1);
+  color: rgba(34, 60, 43, 0.62);
+}
+
 .record-share-slot {
   flex: 0 0 176rpx;
   width: 176rpx;
@@ -309,6 +319,42 @@
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
+}
+
+.reminder-card {
+  padding: 26rpx 24rpx;
+}
+
+.reminder-stage {
+  position: relative;
+  border-radius: 28rpx;
+  background:
+    linear-gradient(180deg, rgba(244, 239, 229, 0.78), rgba(250, 246, 239, 0.96));
+  border: 1px solid rgba(34, 60, 43, 0.08);
+  padding: 28rpx 24rpx;
+}
+
+.reminder-stage-disabled {
+  opacity: 0.7;
+}
+
+.reminder-copy {
+  min-height: 88rpx;
+}
+
+.reminder-value {
+  margin-top: 12rpx;
+  font-size: 29rpx;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.reminder-value-active {
+  color: #1f6a46;
+}
+
+.reminder-value-inactive {
+  color: rgba(34, 60, 43, 0.58);
 }
 
 .inline-button {
@@ -546,6 +592,12 @@
   line-height: 1.5;
   font-weight: 600;
   color: #223c2b;
+}
+
+.share-dialog-value {
+  font-size: 27rpx;
+  line-height: 1.5;
+  color: rgba(34, 60, 43, 0.72);
 }
 
 .share-choice-box {

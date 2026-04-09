@@ -99,6 +99,8 @@ export function buildItemSummary(
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     pinnedAt: item.pinnedAt,
+    reminderAt: item.reminderAt,
+    reminderSyncState: item.reminderSyncState,
     locationName: item.location.name,
     address: item.location.address,
     coverPhotoPath: item.photos[0]?.localPath,

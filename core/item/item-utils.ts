@@ -1,6 +1,7 @@
 import {
   LOCATION_SELECTION_SOURCES,
   ITEM_SCHEMA_VERSION,
+  REMINDER_SYNC_STATES,
   SCENE_TYPES,
   type Item,
   type ItemId,
@@ -10,6 +11,7 @@ import {
   type SceneFieldValueMap,
   type SceneType,
   type TimestampMs,
+  type ReminderSyncState,
 } from '../types'
 import {
   sanitizeSceneFieldValues,
@@ -52,6 +54,25 @@ function normalizeOptionalTimestampMs(value: unknown): TimestampMs | undefined {
   }
 
   return normalizeTimestampMs(value, 'Item pinnedAt')
+}
+
+function normalizeReminderSyncState(value: unknown): ReminderSyncState | undefined {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+
+  if (
+    typeof value === 'string' &&
+    (REMINDER_SYNC_STATES as readonly string[]).includes(value)
+  ) {
+    return value as ReminderSyncState
+  }
+
+  throw new ItemDomainError(
+    'invalid_reminder_sync_state',
+    'Item reminderSyncState is invalid.',
+    { value }
+  )
 }
 
 function inferMimeType(fileName: string): string {
@@ -412,6 +433,8 @@ export function freezeItem(item: Item): Item {
     createdAt: normalizeTimestampMs(item.createdAt, 'Item createdAt'),
     updatedAt: normalizeTimestampMs(item.updatedAt, 'Item updatedAt'),
     pinnedAt: normalizeOptionalTimestampMs(item.pinnedAt),
+    reminderAt: normalizeOptionalTimestampMs(item.reminderAt),
+    reminderSyncState: normalizeReminderSyncState(item.reminderSyncState),
     sceneType: item.sceneType,
     anchorValues: freezeSceneFieldValues(item.anchorValues),
     note: normalizeNote(item.note),

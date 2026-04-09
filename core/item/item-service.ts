@@ -45,10 +45,16 @@ export class ItemService {
     this.defaultRecentLimit = normalizeListLimit(options.defaultRecentLimit)
   }
 
-  async create(input: CreateItemInput): Promise<Item> {
+  async create(
+    input: CreateItemInput,
+    overrides: {
+      readonly idGenerator?: () => ItemId
+      readonly now?: () => TimestampMs
+    } = {}
+  ): Promise<Item> {
     const item = createItem(input, {
-      now: this.now,
-      idGenerator: this.idGenerator,
+      now: overrides.now ?? this.now,
+      idGenerator: overrides.idGenerator ?? this.idGenerator,
     })
 
     await this.repository.save({

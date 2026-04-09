@@ -9,6 +9,8 @@ export const FRONTEND_ROUTES = Object.freeze({
 
 export type RecordPageMode = 'create' | 'view' | 'edit'
 export type RecordsPageEntryState = 'created'
+export type ScenePageEntryState = 'missing_reminder_item'
+export type RecordPageSource = 'reminder'
 
 export interface FrontendPrimaryNavItem {
   readonly key: 'scene' | 'records'
@@ -57,13 +59,25 @@ export function buildCreateRecordUrl(sceneType: SceneType): string {
   })}`
 }
 
+export function buildSceneUrl(options: {
+  readonly entryState?: ScenePageEntryState
+} = {}): string {
+  return `${FRONTEND_ROUTES.scene}${buildQueryString({
+    entryState: options.entryState,
+  })}`
+}
+
 export function buildRecordDetailUrl(
   itemId: string,
-  mode: Extract<RecordPageMode, 'view' | 'edit'> = 'view'
+  mode: Extract<RecordPageMode, 'view' | 'edit'> = 'view',
+  options: {
+    readonly source?: RecordPageSource
+  } = {}
 ): string {
   return `${FRONTEND_ROUTES.record}${buildQueryString({
     mode,
     itemId,
+    source: options.source,
   })}`
 }
 

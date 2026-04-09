@@ -3,10 +3,12 @@ import type {
   LocationSnapshot,
   PhotoAsset,
   PreparedShareSnapshot,
+  ReminderSyncState,
   SceneFieldKey,
   SceneFieldValueMap,
   SceneType,
   ShareSnapshotSelection,
+  TimestampMs,
 } from '../../core/types/index'
 import { isSceneType, sanitizeSceneFieldValues } from '../../core/scene/index'
 import { isMapError } from '../../infra/map/index'
@@ -16,25 +18,30 @@ import {
   type AppRuntime,
 } from '../common/runtime'
 import {
+  buildReminderDisplayText,
   buildFieldViews,
   buildLocationPresentation,
   buildNoteDisplayText,
   buildPhotoPresentation,
   extractAnchorValues,
   getSceneLabel,
+  resolveReminderPresentationState,
   trimOptionalString,
   updateFieldViewsByKey,
   type FrontendFieldView,
 } from '../common/frontend-presenters'
 import {
   buildRecordsUrl,
+  buildSceneUrl,
   FRONTEND_ROUTES,
   isRecordPageMode,
   type RecordPageMode,
 } from '../common/frontend-config'
+import { REMINDER_SUBSCRIBE_TEMPLATE_IDS } from '../common/reminder-config'
 
-type ShareSelectionItemKind = 'photo' | 'field' | 'note'
+type ShareSelectionItemKind = 'photo' | 'field' | 'note' | 'reminder'
 type SharePrepareState = 'idle' | 'preparing' | 'ready' | 'failed'
+type ReminderPresentationState = 'none' | 'active' | 'inactive'
 
 interface ShareSelectionItemView {
   readonly key: string
@@ -64,6 +71,13 @@ interface RecordPageData {
   readonly locationSubtitle: string
   readonly hasPhoto: boolean
   readonly photoPath: string
+  readonly hasReminder: boolean
+  readonly reminderDisplayText: string
+  readonly reminderPresentationState: ReminderPresentationState
+  readonly showReminderChip: boolean
+  readonly reminderDialogVisible: boolean
+  readonly reminderPickerDate: string
+  readonly reminderPickerTime: string
   readonly canCreate: boolean
   readonly canSave: boolean
   readonly canAttachPhoto: boolean
@@ -77,6 +91,8 @@ interface RecordPageCustom {
   currentItem: Item | null
   draftLocation?: LocationSnapshot
   draftPhotos: readonly PhotoAsset[]
+  draftReminderAt?: TimestampMs | null
+  draftReminderSyncState?: ReminderSyncState
   preparedShare: PreparedShareSnapshot | null
   shareCurrentFingerprint: string
   sharePrepareTimer: number | null
@@ -91,6 +107,12 @@ interface RecordPageCustom {
   handleOpenLocation(): Promise<void>
   handlePhotoTap(): Promise<void>
   handleClearDraftPhoto(): void
+  handleOpenReminderDialog(): void
+  handleCloseReminderDialog(): void
+  handleReminderDateChange(event: ReminderPickerEvent): void
+  handleReminderTimeChange(event: ReminderPickerEvent): void
+  handleReminderConfirm(): void
+  handleClearReminder(): void
   handleFieldInput(event: FieldInputEvent): void
   handleFieldSuggestionTap(event: FieldSuggestionEvent): void
   handleNoteInput(event: NoteInputEvent): void
@@ -139,6 +161,10 @@ type ShareSelectionToggleEvent = WechatMiniprogram.BaseEvent<
   }
 >
 
+type ReminderPickerEvent = WechatMiniprogram.CustomEvent<{
+  readonly value: string
+}>
+
 const DEFAULT_SCENE_TYPE: SceneType = 'default'
 const SHARE_COVER_IMAGE_URL = '/assets/share/share-cover.png'
 
@@ -174,6 +200,129 @@ function getActiveLocation(page: RecordPageInstance): LocationSnapshot | undefin
 
 function getActivePhoto(page: RecordPageInstance): PhotoAsset | undefined {
   return page.currentItem?.photos[0] ?? page.draftPhotos[0]
+}
+
+function getActiveReminderAt(
+  page: RecordPageInstance,
+  mode: RecordPageMode = page.data.pageMode
+): TimestampMs | undefined {
+  if (mode === 'create') {
+    return page.draftReminderAt ?? undefined
+  }
+
+  if (mode === 'edit' && page.currentItem) {
+    if (page.draftReminderAt === undefined) {
+      return page.currentItem.reminderAt
+    }
+
+    return page.draftReminderAt ?? undefined
+  }
+
+  return page.currentItem?.reminderAt
+}
+
+function getActiveReminderSyncState(
+  page: RecordPageInstance,
+  mode: RecordPageMode = page.data.pageMode
+): ReminderSyncState | undefined {
+  const activeReminderAt = getActiveReminderAt(page, mode)
+  if (activeReminderAt === undefined) {
+    return undefined
+  }
+
+  if (mode === 'create') {
+    return page.draftReminderSyncState
+  }
+
+  if (!page.currentItem) {
+    return page.draftReminderSyncState
+  }
+
+  if (
+    mode === 'edit' &&
+    page.draftReminderAt !== undefined &&
+    page.draftReminderAt !== page.currentItem.reminderAt
+  ) {
+    return page.draftReminderSyncState
+  }
+
+  return page.currentItem.reminderSyncState
+}
+
+function formatReminderPickerDate(timestampMs: TimestampMs): string {
+  const date = new Date(timestampMs)
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function formatReminderPickerTime(timestampMs: TimestampMs): string {
+  const date = new Date(timestampMs)
+  const hours = `${date.getHours()}`.padStart(2, '0')
+  const minutes = `${date.getMinutes()}`.padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+function buildReminderTimestamp(dateValue: string, timeValue: string): TimestampMs | null {
+  const normalizedDate = trimOptionalString(dateValue)
+  const normalizedTime = trimOptionalString(timeValue)
+  if (!normalizedDate || !normalizedTime) {
+    return null
+  }
+
+  const nextTimestamp = new Date(`${normalizedDate}T${normalizedTime}:00`).getTime()
+  return Number.isFinite(nextTimestamp) && nextTimestamp > 0 ? nextTimestamp : null
+}
+
+function buildDefaultReminderTimestamp(now: TimestampMs = Date.now()): TimestampMs {
+  const date = new Date(now)
+  date.setSeconds(0, 0)
+  date.setMinutes(date.getMinutes() + 30)
+  return date.getTime()
+}
+
+function buildClosedReminderDialogState(): Pick<
+  RecordPageData,
+  'reminderDialogVisible' | 'reminderPickerDate' | 'reminderPickerTime'
+> {
+  return {
+    reminderDialogVisible: false,
+    reminderPickerDate: '',
+    reminderPickerTime: '',
+  }
+}
+
+function buildReminderDialogState(timestampMs: TimestampMs): Pick<
+  RecordPageData,
+  'reminderDialogVisible' | 'reminderPickerDate' | 'reminderPickerTime'
+> {
+  return {
+    reminderDialogVisible: true,
+    reminderPickerDate: formatReminderPickerDate(timestampMs),
+    reminderPickerTime: formatReminderPickerTime(timestampMs),
+  }
+}
+
+function hasFutureReminder(
+  reminderAt: TimestampMs | undefined,
+  now: TimestampMs = Date.now()
+): boolean {
+  return typeof reminderAt === 'number' && reminderAt > now
+}
+
+function isReminderChanged(page: RecordPageInstance): boolean {
+  const currentReminderAt = page.currentItem?.reminderAt
+  const activeReminderAt = getActiveReminderAt(page)
+  return currentReminderAt !== activeReminderAt
+}
+
+function getReminderTemplateIds(): readonly string[] {
+  return Object.freeze(
+    REMINDER_SUBSCRIBE_TEMPLATE_IDS
+      .map((templateId) => templateId.trim())
+      .filter((templateId) => templateId.length > 0)
+  )
 }
 
 function buildClosedShareState(): Pick<
@@ -226,6 +375,11 @@ function syncRecordState(
 ): void {
   const locationPresentation = buildLocationPresentation(getActiveLocation(page))
   const photoPresentation = buildPhotoPresentation(getActivePhoto(page), mode)
+  const activeReminderAt = getActiveReminderAt(page, mode)
+  const reminderPresentationState = resolveReminderPresentationState(
+    activeReminderAt,
+    getActiveReminderSyncState(page, mode)
+  )
   const sceneLabel = getSceneLabel(sceneType)
   const nextFieldViews = buildFieldViews(sceneType, anchorValues)
   const hasFilledFields = nextFieldViews.some((fieldView) => fieldView.value.trim().length > 0)
@@ -251,6 +405,10 @@ function syncRecordState(
     locationSubtitle: locationPresentation.subtitle,
     hasPhoto: photoPresentation.hasPhoto,
     photoPath: photoPresentation.photoPath,
+    hasReminder: typeof activeReminderAt === 'number',
+    reminderDisplayText: buildReminderDisplayText(activeReminderAt),
+    reminderPresentationState,
+    showReminderChip: mode !== 'create' && hasFutureReminder(activeReminderAt),
     canCreate: mode === 'create' && locationPresentation.hasLocation,
     canSave: mode === 'edit',
     canAttachPhoto: mode === 'edit' && page.currentItem !== null && page.currentItem.photos.length === 0,
@@ -261,8 +419,13 @@ function enterCreateMode(page: RecordPageInstance, sceneType: SceneType): void {
   page.currentItem = null
   page.draftLocation = undefined
   page.draftPhotos = []
+  page.draftReminderAt = undefined
+  page.draftReminderSyncState = undefined
   clearSharePreparationArtifacts(page, { clearCache: true })
-  page.setData(buildClosedShareState())
+  page.setData({
+    ...buildClosedShareState(),
+    ...buildClosedReminderDialogState(),
+  })
   syncRecordState(page, 'create', sceneType, {}, '')
 }
 
@@ -270,8 +433,13 @@ function enterViewMode(page: RecordPageInstance, item: Item): void {
   page.currentItem = item
   page.draftLocation = undefined
   page.draftPhotos = []
+  page.draftReminderAt = undefined
+  page.draftReminderSyncState = undefined
   clearSharePreparationArtifacts(page, { clearCache: true })
-  page.setData(buildClosedShareState())
+  page.setData({
+    ...buildClosedShareState(),
+    ...buildClosedReminderDialogState(),
+  })
   syncRecordState(page, 'view', item.sceneType, item.anchorValues, item.note)
 }
 
@@ -279,8 +447,13 @@ function enterEditMode(page: RecordPageInstance, item: Item): void {
   page.currentItem = item
   page.draftLocation = undefined
   page.draftPhotos = []
+  page.draftReminderAt = undefined
+  page.draftReminderSyncState = undefined
   clearSharePreparationArtifacts(page, { clearCache: true })
-  page.setData(buildClosedShareState())
+  page.setData({
+    ...buildClosedShareState(),
+    ...buildClosedReminderDialogState(),
+  })
   syncRecordState(page, 'edit', item.sceneType, item.anchorValues, item.note)
 }
 
@@ -366,6 +539,30 @@ async function openMiniProgramSetting(): Promise<void> {
       fail: (error) => reject(error),
     })
   })
+}
+
+async function requestReminderPermission(): Promise<ReminderSyncState> {
+  const templateIds = getReminderTemplateIds()
+  if (templateIds.length === 0) {
+    return 'unscheduled'
+  }
+
+  try {
+    const result = await new Promise<Record<string, string>>((resolve, reject) => {
+      wx.requestSubscribeMessage({
+        tmplIds: [...templateIds],
+        success: (nextResult) => resolve(nextResult as Record<string, string>),
+        fail: (error) => reject(error),
+      })
+    })
+
+    const hasAcceptedTemplate = templateIds.some(
+      (templateId) => result[templateId] === 'accept'
+    )
+    return hasAcceptedTemplate ? 'scheduled' : 'unscheduled'
+  } catch {
+    return 'unscheduled'
+  }
 }
 
 function showToastMessage(
@@ -462,6 +659,49 @@ async function redirectTo(url: string): Promise<void> {
   })
 }
 
+async function reLaunchTo(url: string): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    wx.reLaunch({
+      url,
+      success: () => resolve(),
+      fail: (error) => reject(error),
+    })
+  })
+}
+
+function buildReminderSyncRequest(
+  page: RecordPageInstance,
+  itemId: string,
+  reminderAt: TimestampMs | undefined,
+  reminderSyncState: ReminderSyncState
+) {
+  const activeLocation = getActiveLocation(page)
+  const locationPresentation = buildLocationPresentation(activeLocation)
+
+  return Object.freeze({
+    itemId,
+    reminderAt,
+    reminderDisplayText: buildReminderDisplayText(reminderAt),
+    reminderSyncState,
+    sceneType: page.data.sceneType,
+    locationTitle: locationPresentation.title,
+    locationSubtitle: locationPresentation.subtitle,
+  })
+}
+
+async function ensureReminderMutationOnline(
+  page: RecordPageInstance,
+  message: string
+): Promise<boolean> {
+  const networkType = await page.runtime.getNetworkType()
+  if (networkType !== 'none') {
+    return true
+  }
+
+  showToastMessage(message)
+  return false
+}
+
 function buildShareSelectionItems(item: Item): readonly ShareSelectionItemView[] {
   const selectionItems: ShareSelectionItemView[] = []
   const photo = item.photos[0]
@@ -497,6 +737,15 @@ function buildShareSelectionItems(item: Item): readonly ShareSelectionItemView[]
     })
   }
 
+  if (typeof item.reminderAt === 'number') {
+    selectionItems.push({
+      key: 'reminder',
+      label: '提醒时间',
+      checked: true,
+      kind: 'reminder',
+    })
+  }
+
   return Object.freeze(selectionItems)
 }
 
@@ -520,6 +769,7 @@ function buildShareSnapshotSelection(
   const includedFieldKeys: SceneFieldKey[] = []
   let includePhoto = false
   let includeNote = false
+  let includeReminder = false
 
   for (const selectionItem of selectionItems) {
     if (!selectionItem.checked) {
@@ -536,6 +786,11 @@ function buildShareSnapshotSelection(
       continue
     }
 
+    if (selectionItem.kind === 'reminder') {
+      includeReminder = true
+      continue
+    }
+
     if (selectionItem.fieldKey) {
       includedFieldKeys.push(selectionItem.fieldKey)
     }
@@ -545,6 +800,7 @@ function buildShareSnapshotSelection(
     includePhoto,
     includedFieldKeys: Object.freeze(includedFieldKeys),
     includeNote,
+    includeReminder,
   })
 }
 
@@ -562,6 +818,7 @@ function buildShareSelectionFingerprint(
     item.updatedAt.toString(),
     selection.includePhoto ? 'photo:1' : 'photo:0',
     selection.includeNote ? 'note:1' : 'note:0',
+    selection.includeReminder ? 'reminder:1' : 'reminder:0',
     `fields:${sortedFieldKeys.join(',')}`,
   ].join('|')
 }
@@ -694,26 +951,27 @@ function openShareFlow(page: RecordPageInstance, item: Item): void {
 async function initializeRecordPage(
   page: RecordPageInstance,
   options: WechatMiniprogram.IAnyObject
-): Promise<void> {
+): Promise<boolean> {
   const rawMode = readQueryString(options, 'mode')
   const rawSceneType = readQueryString(options, 'sceneType')
   const rawItemId = readQueryString(options, 'itemId')
+  const rawSource = readQueryString(options, 'source')
   const resolvedMode: RecordPageMode =
     rawMode && isRecordPageMode(rawMode) ? rawMode : rawItemId ? 'view' : 'create'
 
   if (resolvedMode === 'create') {
     if (!rawSceneType || !isSceneType(rawSceneType)) {
       await redirectTo(FRONTEND_ROUTES.scene)
-      return
+      return false
     }
 
     enterCreateMode(page, rawSceneType)
-    return
+    return true
   }
 
   if (!rawItemId) {
     await redirectTo(FRONTEND_ROUTES.records)
-    return
+    return false
   }
 
   const item = await runBusy(page, '读取记录', async () =>
@@ -721,21 +979,27 @@ async function initializeRecordPage(
   )
 
   if (!item) {
-    wx.showToast({
-      title: '记录不存在或已删除',
-      icon: 'none',
-      duration: 1800,
-    })
+    if (rawSource === 'reminder') {
+      await reLaunchTo(
+        buildSceneUrl({
+          entryState: 'missing_reminder_item',
+        })
+      )
+      return false
+    }
+
+    showToastMessage('记录不存在或已删除')
     await redirectTo(FRONTEND_ROUTES.records)
-    return
+    return false
   }
 
   if (resolvedMode === 'edit') {
     enterEditMode(page, item)
-    return
+    return true
   }
 
   enterViewMode(page, item)
+  return true
 }
 
 const initialData: RecordPageData = {
@@ -758,6 +1022,13 @@ const initialData: RecordPageData = {
   locationSubtitle: '',
   hasPhoto: false,
   photoPath: '',
+  hasReminder: false,
+  reminderDisplayText: '',
+  reminderPresentationState: 'none',
+  showReminderChip: false,
+  reminderDialogVisible: false,
+  reminderPickerDate: '',
+  reminderPickerTime: '',
   canCreate: false,
   canSave: false,
   canAttachPhoto: false,
@@ -771,6 +1042,8 @@ Page<RecordPageData, RecordPageCustom>({
   currentItem: null,
   draftLocation: undefined,
   draftPhotos: [],
+  draftReminderAt: undefined,
+  draftReminderSyncState: undefined,
   preparedShare: null,
   shareCurrentFingerprint: '',
   sharePrepareTimer: null,
@@ -785,8 +1058,14 @@ Page<RecordPageData, RecordPageCustom>({
     this.sharePreparedSnapshotCache = new Map()
     this.sharePreparationTasks = new Map()
     this.preparedShare = null
+    this.draftReminderAt = undefined
+    this.draftReminderSyncState = undefined
     try {
-      await initializeRecordPage(this, options)
+      const pageInitialized = await initializeRecordPage(this, options)
+      if (!pageInitialized) {
+        return
+      }
+
       this.setData({
         pageReady: true,
       })
@@ -950,6 +1229,101 @@ Page<RecordPageData, RecordPageCustom>({
     )
   },
 
+  handleOpenReminderDialog() {
+    if (this.data.busy || this.data.isViewMode) {
+      return
+    }
+
+    const reminderAt = getActiveReminderAt(this) ?? buildDefaultReminderTimestamp()
+    this.setData(buildReminderDialogState(reminderAt))
+  },
+
+  handleCloseReminderDialog() {
+    if (!this.data.reminderDialogVisible) {
+      return
+    }
+
+    this.setData(buildClosedReminderDialogState())
+  },
+
+  handleReminderDateChange(event) {
+    if (!this.data.reminderDialogVisible) {
+      return
+    }
+
+    this.setData({
+      reminderPickerDate: event.detail.value,
+    })
+  },
+
+  handleReminderTimeChange(event) {
+    if (!this.data.reminderDialogVisible) {
+      return
+    }
+
+    this.setData({
+      reminderPickerTime: event.detail.value,
+    })
+  },
+
+  handleReminderConfirm() {
+    if (!this.data.reminderDialogVisible) {
+      return
+    }
+
+    const nextReminderAt = buildReminderTimestamp(
+      this.data.reminderPickerDate,
+      this.data.reminderPickerTime
+    )
+
+    if (!nextReminderAt || nextReminderAt <= Date.now()) {
+      showToastMessage('请选择未来时间')
+      return
+    }
+
+    const currentReminderAt = this.currentItem?.reminderAt
+    const shouldRequestPermission =
+      this.data.isCreateMode ||
+      (this.data.isEditMode && currentReminderAt !== nextReminderAt)
+
+    void runBusy(this, '提醒授权', async () => {
+      this.draftReminderAt = nextReminderAt
+      this.draftReminderSyncState = shouldRequestPermission
+        ? await requestReminderPermission()
+        : this.currentItem?.reminderSyncState
+
+      this.setData(buildClosedReminderDialogState())
+      syncRecordState(
+        this,
+        this.data.pageMode,
+        this.data.sceneType,
+        extractAnchorValues(this.data.fieldViews),
+        this.data.noteValue
+      )
+    }).catch(async (error) => {
+      this.draftReminderAt = undefined
+      this.draftReminderSyncState = undefined
+      await handleAsyncError(this, error, '提醒权限获取失败：')
+    })
+  },
+
+  handleClearReminder() {
+    if (this.data.busy || this.data.isViewMode || !this.data.hasReminder) {
+      return
+    }
+
+    this.draftReminderAt = this.data.isCreateMode ? undefined : null
+    this.draftReminderSyncState = undefined
+    this.setData(buildClosedReminderDialogState())
+    syncRecordState(
+      this,
+      this.data.pageMode,
+      this.data.sceneType,
+      extractAnchorValues(this.data.fieldViews),
+      this.data.noteValue
+    )
+  },
+
   handleClearDraftLocation() {
     if (!this.data.isCreateMode || this.data.busy) {
       return
@@ -1027,7 +1401,41 @@ Page<RecordPageData, RecordPageCustom>({
       return
     }
 
+    const nextReminderAt = getActiveReminderAt(this)
+    if (
+      typeof nextReminderAt === 'number' &&
+      !(await ensureReminderMutationOnline(this, '提醒时间需要联网后再保存'))
+    ) {
+      return
+    }
+
+    const createdItemId = this.runtime.createItemId()
+    let scheduledReminderCreated = false
+
     try {
+      let nextReminderSyncState: ReminderSyncState | undefined
+
+      if (typeof nextReminderAt === 'number') {
+        nextReminderSyncState = getActiveReminderSyncState(this, 'create') ?? 'unscheduled'
+
+        if (nextReminderSyncState === 'scheduled') {
+          try {
+            await this.runtime.syncReminderJob(
+              buildReminderSyncRequest(
+                this,
+                createdItemId,
+                nextReminderAt,
+                nextReminderSyncState
+              )
+            )
+            scheduledReminderCreated = true
+          } catch {
+            nextReminderSyncState = 'unscheduled'
+            showToastMessage('提醒同步失败，已仅保存提醒时间')
+          }
+        }
+      }
+
       const createdItem = await runBusy(this, '创建', async () =>
         this.runtime.create({
           sceneType: this.data.sceneType,
@@ -1037,7 +1445,11 @@ Page<RecordPageData, RecordPageCustom>({
             extractAnchorValues(this.data.fieldViews)
           ),
           note: this.data.noteValue,
+          reminderAt: nextReminderAt,
+          reminderSyncState: nextReminderSyncState,
           photos: this.draftPhotos,
+        }, {
+          forcedItemId: createdItemId,
         })
       )
 
@@ -1048,6 +1460,15 @@ Page<RecordPageData, RecordPageCustom>({
         })
       )
     } catch (error) {
+      if (scheduledReminderCreated) {
+        try {
+          await this.runtime.syncReminderJob(
+            buildReminderSyncRequest(this, createdItemId, undefined, 'unscheduled')
+          )
+        } catch {
+          // Best effort rollback to avoid orphan reminder jobs.
+        }
+      }
       await handleAsyncError(this, error, '创建失败：')
     }
   },
@@ -1086,22 +1507,142 @@ Page<RecordPageData, RecordPageCustom>({
       return
     }
 
-    try {
-      const updatedItem = await runBusy(this, '保存', async () =>
-        this.runtime.saveEdit(
-          this.currentItem?.id ?? '',
-          this.runtime.buildEditableInput(
-            sanitizeSceneFieldValues(
-              this.currentItem?.sceneType ?? this.data.sceneType,
-              extractAnchorValues(this.data.fieldViews)
-            ),
-            this.data.noteValue
-          ),
-          this.draftPhotos[0]
-        )
-      )
+    const currentReminderAt = this.currentItem.reminderAt
+    const currentReminderSyncState = this.currentItem.reminderSyncState
+    const nextReminderAt = getActiveReminderAt(this)
+    const reminderChanged = isReminderChanged(this)
+    const hadReminder = typeof currentReminderAt === 'number'
+    const hasNextReminder = typeof nextReminderAt === 'number'
 
-      enterViewMode(this, updatedItem)
+    if (
+      reminderChanged &&
+      !(await ensureReminderMutationOnline(this, '提醒时间需要联网后再保存'))
+    ) {
+      return
+    }
+
+    try {
+      let nextReminderSyncState: ReminderSyncState | undefined =
+        nextReminderAt === undefined
+          ? undefined
+          : reminderChanged
+            ? undefined
+            : this.currentItem.reminderSyncState
+      let rollbackReminderRequest:
+        | ReturnType<typeof buildReminderSyncRequest>
+        | undefined
+
+      if (reminderChanged) {
+        if (!hadReminder && hasNextReminder) {
+          nextReminderSyncState = getActiveReminderSyncState(this) ?? 'unscheduled'
+
+          if (nextReminderSyncState === 'scheduled') {
+            try {
+              await this.runtime.syncReminderJob(
+                buildReminderSyncRequest(
+                  this,
+                  this.currentItem.id,
+                  nextReminderAt,
+                  'scheduled'
+                )
+              )
+              rollbackReminderRequest = buildReminderSyncRequest(
+                this,
+                this.currentItem.id,
+                undefined,
+                'unscheduled'
+              )
+            } catch {
+              nextReminderSyncState = 'unscheduled'
+              showToastMessage('提醒同步失败，已仅保存提醒时间')
+            }
+          }
+        } else if (hadReminder && !hasNextReminder) {
+          await this.runtime.syncReminderJob(
+            buildReminderSyncRequest(
+              this,
+              this.currentItem.id,
+              undefined,
+              'unscheduled'
+            )
+          )
+
+          if (currentReminderSyncState === 'scheduled') {
+            rollbackReminderRequest = buildReminderSyncRequest(
+              this,
+              this.currentItem.id,
+              currentReminderAt,
+              'scheduled'
+            )
+          }
+        } else if (hasNextReminder) {
+          nextReminderSyncState = getActiveReminderSyncState(this)
+          if (nextReminderSyncState !== 'scheduled') {
+            showToastMessage('需同意提醒权限后才能保存提醒时间')
+            return
+          }
+
+          await this.runtime.syncReminderJob(
+            buildReminderSyncRequest(
+              this,
+              this.currentItem.id,
+              nextReminderAt,
+              'scheduled'
+            )
+          )
+
+          nextReminderSyncState = 'scheduled'
+          rollbackReminderRequest =
+            hadReminder && currentReminderSyncState === 'scheduled'
+              ? buildReminderSyncRequest(
+                  this,
+                  this.currentItem.id,
+                  currentReminderAt,
+                  'scheduled'
+                )
+              : buildReminderSyncRequest(
+                  this,
+                  this.currentItem.id,
+                  undefined,
+                  'unscheduled'
+                )
+        }
+      }
+
+      try {
+        const updatedItem = await runBusy(this, '保存', async () =>
+          this.runtime.saveEdit(
+            this.currentItem?.id ?? '',
+            this.runtime.buildEditableInput(
+              sanitizeSceneFieldValues(
+                this.currentItem?.sceneType ?? this.data.sceneType,
+                extractAnchorValues(this.data.fieldViews)
+              ),
+              this.data.noteValue,
+              reminderChanged
+                ? {
+                    reminderAt: nextReminderAt ?? null,
+                    reminderSyncState: nextReminderSyncState,
+                  }
+                : undefined
+            ),
+            this.draftPhotos[0]
+          )
+        )
+
+        enterViewMode(this, updatedItem)
+      } catch (error) {
+        if (reminderChanged && rollbackReminderRequest) {
+          try {
+            await this.runtime.syncReminderJob(
+              rollbackReminderRequest
+            )
+          } catch {
+            // Best effort rollback so cloud reminder state stays close to local reality.
+          }
+        }
+        throw error
+      }
     } catch (error) {
       await handleAsyncError(this, error, '保存失败：')
     }
@@ -1128,8 +1669,16 @@ Page<RecordPageData, RecordPageCustom>({
       }
 
       const deletedItemId = this.currentItem.id
+      const currentReminderAt = this.currentItem.reminderAt
+      const shouldCancelFutureReminder = hasFutureReminder(currentReminderAt)
 
       await runBusy(this, '删除', async () => {
+        if (shouldCancelFutureReminder && (await this.runtime.getNetworkType()) !== 'none') {
+          await this.runtime.syncReminderJob(
+            buildReminderSyncRequest(this, deletedItemId, undefined, 'unscheduled')
+          )
+        }
+
         await this.runtime.deleteItem(deletedItemId)
       })
 

@@ -98,6 +98,55 @@
   border-top: 1px solid rgba(34, 60, 43, 0.06);
 }
 
+.records-reminder-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 18rpx 22rpx 20rpx;
+  border-radius: 32rpx;
+  border: 1px solid rgba(34, 60, 43, 0.08);
+  box-shadow: 0 20rpx 48rpx rgba(49, 42, 27, 0.1);
+  background: rgba(255, 251, 245, 0.94);
+  box-sizing: border-box;
+}
+
+.records-reminder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 4rpx 2rpx;
+}
+
+.records-reminder-copy {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.records-reminder-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #223c2b;
+}
+
+.records-reminder-count,
+.records-reminder-toggle {
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: rgba(34, 60, 43, 0.62);
+}
+
+.records-reminder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 18rpx;
+  padding-top: 18rpx;
+  border-top: 1px solid rgba(34, 60, 43, 0.06);
+}
+
 .records-group {
   display: flex;
   flex-direction: column;
@@ -271,6 +320,14 @@
   gap: 16rpx;
 }
 
+.record-meta-tags {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10rpx;
+  flex-wrap: wrap;
+}
+
 .record-meta .record-time {
   margin-top: 0;
   flex: 1;
@@ -289,6 +346,28 @@
   font-size: 22rpx;
   line-height: 1.2;
   white-space: nowrap;
+}
+
+.record-reminder-tag {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.record-reminder-tag-active {
+  background: rgba(31, 106, 70, 0.12);
+  color: #1f6a46;
+}
+
+.record-reminder-tag-inactive {
+  background: rgba(34, 60, 43, 0.1);
+  color: rgba(34, 60, 43, 0.62);
 }
 
 .empty-card {

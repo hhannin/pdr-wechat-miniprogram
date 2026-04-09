@@ -94,6 +94,15 @@
       </block>
     </view>
 
+    <view class="section-card" wx:if="{{hasReminder}}">
+      <view class="section-head">
+        <view class="section-title">提醒时间</view>
+      </view>
+      <view class="field-static">
+        <view class="field-static-value">{{reminderDisplayText}}</view>
+      </view>
+    </view>
+
     <view class="section-card" wx:if="{{hasNote}}">
       <view class="section-head">
         <view class="section-title">备注</view>

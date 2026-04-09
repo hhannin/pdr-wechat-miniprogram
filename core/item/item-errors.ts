@@ -5,6 +5,7 @@ export const ITEM_ERROR_CODES = [
   'invalid_scene_fields',
   'invalid_location',
   'invalid_timestamp',
+  'invalid_reminder_sync_state',
   'invalid_note',
   'invalid_photo',
   'photo_already_attached',

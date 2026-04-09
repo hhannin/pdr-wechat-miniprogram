@@ -9,6 +9,7 @@ import {
   buildFieldViews,
   buildNoteDisplayText,
   buildPhotoPresentation,
+  buildReminderDisplayText,
   buildShareCardSubtitleFromItem,
   buildShareCardTitleFromItem,
   getSceneLabel,
@@ -30,6 +31,8 @@ interface SharePageData {
   readonly hasPhoto: boolean
   readonly photoPath: string
   readonly imageState: SharedImageState
+  readonly hasReminder: boolean
+  readonly reminderDisplayText: string
   readonly hasNote: boolean
   readonly noteDisplayText: string
 }
@@ -118,6 +121,8 @@ function syncExpiredState(page: SharePageInstance): void {
     hasPhoto: false,
     photoPath: '',
     imageState: 'none',
+    hasReminder: false,
+    reminderDisplayText: '',
     hasNote: false,
     noteDisplayText: '',
   })
@@ -136,6 +141,8 @@ function syncRequiresNetworkState(page: SharePageInstance): void {
     hasPhoto: false,
     photoPath: '',
     imageState: 'none',
+    hasReminder: false,
+    reminderDisplayText: '',
     hasNote: false,
     noteDisplayText: '',
   })
@@ -167,6 +174,8 @@ function syncReadyState(page: SharePageInstance, sharedItem: SharedItem): void {
     hasPhoto: photoPresentation.hasPhoto,
     photoPath: photoPresentation.photoPath,
     imageState: sharedItem.imageState,
+    hasReminder: typeof sharedItem.reminderAt === 'number',
+    reminderDisplayText: buildReminderDisplayText(sharedItem.reminderAt),
     hasNote: trimOptionalString(sharedItem.note) !== undefined,
     noteDisplayText: buildNoteDisplayText(sharedItem.note),
   })
@@ -208,6 +217,8 @@ Page<SharePageData, SharePageCustom>({
     hasPhoto: false,
     photoPath: '',
     imageState: 'none',
+    hasReminder: false,
+    reminderDisplayText: '',
     hasNote: false,
     noteDisplayText: '',
   },

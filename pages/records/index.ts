@@ -3,6 +3,7 @@ import { appRuntime, type AppRuntime } from '../common/runtime'
 import {
   formatSummaryTimestamp,
   getSceneLabel,
+  resolveReminderPresentationState,
   trimOptionalString,
 } from '../common/frontend-presenters'
 import {
@@ -27,6 +28,8 @@ interface RecordsItemView {
   readonly hasPhoto: boolean
   readonly isPinned: boolean
   readonly pinActionLabel: string
+  readonly hasReminderTag: boolean
+  readonly reminderTagClassName: string
   readonly isSwipeOpen: boolean
   readonly isHighlighted: boolean
 }
@@ -44,6 +47,9 @@ interface RecordsPageData {
   readonly hasPinnedItems: boolean
   readonly pinnedSectionCollapsed: boolean
   readonly pinnedItems: readonly RecordsItemView[]
+  readonly hasReminderItems: boolean
+  readonly reminderSectionCollapsed: boolean
+  readonly reminderItems: readonly RecordsItemView[]
   readonly groups: readonly RecordsGroupView[]
   readonly footerNavItems: readonly FooterNavItemView[]
 }
@@ -61,6 +67,7 @@ interface RecordsPageCustom {
   onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent
   onPullDownRefresh(): Promise<void>
   handleTogglePinnedSection(): void
+  handleToggleReminderSection(): void
   handleCardTouchStart(event: ItemTouchEvent): void
   handleCardTouchEnd(event: ItemTouchEvent): void
   handleCardTap(event: ItemTapEvent): Promise<void>
@@ -220,8 +227,16 @@ function buildItemView(
   summary: ItemSummary,
   rowKey: string,
   openSwipeRowKey: string,
-  focusItemId: string
+  focusItemId: string,
+  now: number
 ): RecordsItemView {
+  const reminderPresentationState = resolveReminderPresentationState(
+    summary.reminderAt,
+    summary.reminderSyncState,
+    now
+  )
+  const hasReminderTag = hasFutureReminder(summary, now)
+
   return {
     rowKey,
     id: summary.id,
@@ -234,9 +249,41 @@ function buildItemView(
     isPinned: typeof summary.pinnedAt === 'number' && summary.pinnedAt > 0,
     pinActionLabel:
       typeof summary.pinnedAt === 'number' && summary.pinnedAt > 0 ? '取消置顶' : '置顶',
+    hasReminderTag,
+    reminderTagClassName:
+      reminderPresentationState === 'active'
+        ? 'record-reminder-tag-active'
+        : 'record-reminder-tag-inactive',
     isSwipeOpen: rowKey === openSwipeRowKey,
     isHighlighted: summary.id === focusItemId,
   }
+}
+
+function hasFutureReminder(summary: ItemSummary, now: number): boolean {
+  return typeof summary.reminderAt === 'number' && summary.reminderAt > now
+}
+
+function getSummaryListTimestamp(summary: ItemSummary, now: number): number {
+  if (typeof summary.reminderAt === 'number' && summary.reminderAt <= now) {
+    return summary.reminderAt
+  }
+
+  return summary.createdAt
+}
+
+function compareListSummaries(left: ItemSummary, right: ItemSummary, now: number): number {
+  const leftTimestamp = getSummaryListTimestamp(left, now)
+  const rightTimestamp = getSummaryListTimestamp(right, now)
+
+  if (leftTimestamp !== rightTimestamp) {
+    return rightTimestamp - leftTimestamp
+  }
+
+  if (left.updatedAt !== right.updatedAt) {
+    return right.updatedAt - left.updatedAt
+  }
+
+  return left.id.localeCompare(right.id)
 }
 
 function comparePinnedSummaries(left: ItemSummary, right: ItemSummary): number {
@@ -257,31 +304,68 @@ function comparePinnedSummaries(left: ItemSummary, right: ItemSummary): number {
 function buildPinnedItemViews(
   summaries: readonly ItemSummary[],
   openSwipeRowKey: string,
-  focusItemId: string
+  focusItemId: string,
+  now: number
 ): readonly RecordsItemView[] {
   return summaries
     .filter((summary) => typeof summary.pinnedAt === 'number' && summary.pinnedAt > 0)
     .slice()
     .sort(comparePinnedSummaries)
-    .map((summary) => buildItemView(summary, `pinned:${summary.id}`, openSwipeRowKey, focusItemId))
+    .map((summary) =>
+      buildItemView(summary, `pinned:${summary.id}`, openSwipeRowKey, focusItemId, now)
+    )
+}
+
+function compareReminderSummaries(left: ItemSummary, right: ItemSummary): number {
+  const leftReminderAt = typeof left.reminderAt === 'number' ? left.reminderAt : 0
+  const rightReminderAt = typeof right.reminderAt === 'number' ? right.reminderAt : 0
+
+  if (leftReminderAt !== rightReminderAt) {
+    return leftReminderAt - rightReminderAt
+  }
+
+  if (left.createdAt !== right.createdAt) {
+    return right.createdAt - left.createdAt
+  }
+
+  return left.id.localeCompare(right.id)
+}
+
+function buildReminderItemViews(
+  summaries: readonly ItemSummary[],
+  openSwipeRowKey: string,
+  focusItemId: string,
+  now: number
+): readonly RecordsItemView[] {
+  return summaries
+    .filter((summary) => hasFutureReminder(summary, now))
+    .slice()
+    .sort(compareReminderSummaries)
+    .map((summary) =>
+      buildItemView(summary, `reminder:${summary.id}`, openSwipeRowKey, focusItemId, now)
+    )
 }
 
 function buildGroupViews(
   summaries: readonly ItemSummary[],
   openSwipeRowKey: string,
-  focusItemId: string
+  focusItemId: string,
+  now: number
 ): readonly RecordsGroupView[] {
   const groups = new Map<string, RecordsItemView[]>()
   const titles = new Map<string, string>()
 
   for (const summary of summaries) {
-    const groupKey = formatDateKey(summary.createdAt)
+    const groupTimestamp = getSummaryListTimestamp(summary, now)
+    const groupKey = formatDateKey(groupTimestamp)
     const items = groups.get(groupKey) ?? []
-    items.push(buildItemView(summary, `group:${groupKey}:${summary.id}`, openSwipeRowKey, focusItemId))
+    items.push(
+      buildItemView(summary, `group:${groupKey}:${summary.id}`, openSwipeRowKey, focusItemId, now)
+    )
     groups.set(groupKey, items)
 
     if (!titles.has(groupKey)) {
-      titles.set(groupKey, buildGroupTitle(summary.createdAt))
+      titles.set(groupKey, buildGroupTitle(groupTimestamp))
     }
   }
 
@@ -293,17 +377,27 @@ function buildGroupViews(
 }
 
 function syncItemGroups(page: RecordsPageInstance): void {
+  const now = Date.now()
   const pinnedItems = buildPinnedItemViews(
     page.summaries,
     page.openSwipeRowKey,
-    page.focusItemId
+    page.focusItemId,
+    now
+  )
+  const reminderItems = buildReminderItemViews(
+    page.summaries,
+    page.openSwipeRowKey,
+    page.focusItemId,
+    now
   )
 
   page.setData({
     hasItems: page.summaries.length > 0,
     hasPinnedItems: pinnedItems.length > 0,
     pinnedItems,
-    groups: buildGroupViews(page.summaries, page.openSwipeRowKey, page.focusItemId),
+    hasReminderItems: reminderItems.length > 0,
+    reminderItems,
+    groups: buildGroupViews(page.summaries, page.openSwipeRowKey, page.focusItemId, now),
   })
 }
 
@@ -351,13 +445,14 @@ async function refreshItems(
   const loadSummaries = async (): Promise<void> => {
     const summaries = (await page.runtime.listRecent(100))
       .slice()
-      .sort((left, right) => right.createdAt - left.createdAt)
+      .sort((left, right) => compareListSummaries(left, right, Date.now()))
     page.summaries = summaries
 
     if (page.openSwipeRowKey) {
       const hasOpenItem = [
-        ...buildPinnedItemViews(summaries, page.openSwipeRowKey, page.focusItemId),
-        ...buildGroupViews(summaries, page.openSwipeRowKey, page.focusItemId).flatMap((group) => group.items),
+        ...buildPinnedItemViews(summaries, page.openSwipeRowKey, page.focusItemId, Date.now()),
+        ...buildReminderItemViews(summaries, page.openSwipeRowKey, page.focusItemId, Date.now()),
+        ...buildGroupViews(summaries, page.openSwipeRowKey, page.focusItemId, Date.now()).flatMap((group) => group.items),
       ].some((item) => item.rowKey === page.openSwipeRowKey)
       if (!hasOpenItem) {
         page.openSwipeRowKey = ''
@@ -390,6 +485,9 @@ Page<RecordsPageData, RecordsPageCustom>({
     hasPinnedItems: false,
     pinnedSectionCollapsed: true,
     pinnedItems: [],
+    hasReminderItems: false,
+    reminderSectionCollapsed: true,
+    reminderItems: [],
     groups: [],
     footerNavItems: FOOTER_NAV_ITEMS,
   },
@@ -466,6 +564,17 @@ Page<RecordsPageData, RecordsPageCustom>({
     closeSwipeActions(this)
     this.setData({
       pinnedSectionCollapsed: !this.data.pinnedSectionCollapsed,
+    })
+  },
+
+  handleToggleReminderSection() {
+    if (!this.data.hasReminderItems) {
+      return
+    }
+
+    closeSwipeActions(this)
+    this.setData({
+      reminderSectionCollapsed: !this.data.reminderSectionCollapsed,
     })
   },
 

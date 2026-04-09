@@ -47,6 +47,8 @@ function createItemBase(
       input.anchorValues
     ),
     note: normalizeNote(input.note),
+    reminderAt: input.reminderAt,
+    reminderSyncState: input.reminderSyncState,
     location: normalizeLocationSnapshot(input.location),
     photos: normalizePhotoAssets(input.photos),
   }

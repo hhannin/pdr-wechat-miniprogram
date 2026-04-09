@@ -37,6 +37,7 @@ export interface ShareSnapshotSelection {
   readonly includePhoto: boolean
   readonly includedFieldKeys: readonly SceneFieldKey[]
   readonly includeNote: boolean
+  readonly includeReminder: boolean
 }
 
 export interface ShareSnapshotPayload {
@@ -49,6 +50,7 @@ export interface ShareSnapshotPayload {
   readonly location: LocationSnapshot
   readonly anchorValues: SceneFieldValueMap
   readonly note: string
+  readonly reminderAt?: TimestampMs
   readonly hasImage: boolean
   readonly remotePhotos: readonly SharedRemotePhoto[]
   readonly shareCardTitle: string
@@ -64,6 +66,7 @@ export interface CreateShareSnapshotRequest {
   readonly location: LocationSnapshot
   readonly anchorValues: SceneFieldValueMap
   readonly note: string
+  readonly reminderAt?: TimestampMs
   readonly remotePhotos: readonly SharedRemotePhoto[]
   readonly shareCardTitle: string
   readonly shareCardSubtitle: string

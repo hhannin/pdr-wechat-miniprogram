@@ -4,9 +4,15 @@ import type { LocationSnapshot } from './location'
 import type { PhotoAsset } from './media'
 import type { SceneType } from './scene'
 
-export const ITEM_SCHEMA_VERSION = 1 as const
+export const ITEM_SCHEMA_VERSION = 2 as const
 
 export type ItemSchemaVersion = typeof ITEM_SCHEMA_VERSION
+export const REMINDER_SYNC_STATES = [
+  'scheduled',
+  'unscheduled',
+] as const
+
+export type ReminderSyncState = typeof REMINDER_SYNC_STATES[number]
 
 export type ItemId = EntityId
 
@@ -14,6 +20,8 @@ export interface ItemEditableFields {
   readonly sceneType: SceneType
   readonly anchorValues: SceneFieldValueMap
   readonly note: string
+  readonly reminderAt?: TimestampMs
+  readonly reminderSyncState?: ReminderSyncState
 }
 
 export interface ItemDraft extends ItemEditableFields {
@@ -36,12 +44,16 @@ export interface CreateItemInput {
   readonly location: LocationSnapshot
   readonly anchorValues?: SceneFieldValueMap
   readonly note?: string
+  readonly reminderAt?: TimestampMs
+  readonly reminderSyncState?: ReminderSyncState
   readonly photos?: readonly PhotoAsset[]
 }
 
 export interface UpdateEditableItemInput {
   readonly anchorValues?: SceneFieldValueMap
   readonly note?: string
+  readonly reminderAt?: TimestampMs | null
+  readonly reminderSyncState?: ReminderSyncState
 }
 
 export interface AttachPhotoIfAbsentInput {
@@ -54,6 +66,8 @@ export interface ItemSummary {
   readonly createdAt: TimestampMs
   readonly updatedAt: TimestampMs
   readonly pinnedAt?: TimestampMs
+  readonly reminderAt?: TimestampMs
+  readonly reminderSyncState?: ReminderSyncState
   readonly locationName: string
   readonly address: string
   readonly coverPhotoPath?: string
