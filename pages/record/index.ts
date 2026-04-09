@@ -98,6 +98,7 @@ interface RecordPageCustom {
   sharePrepareTimer: number | null
   sharePreparedSnapshotCache: Map<string, PreparedShareSnapshot>
   sharePreparationTasks: Map<string, Promise<PreparedShareSnapshot>>
+  reminderPermissionPending: boolean
   pageDisposed: boolean
   onLoad(options: WechatMiniprogram.IAnyObject): Promise<void>
   onUnload(): void
@@ -1049,6 +1050,7 @@ Page<RecordPageData, RecordPageCustom>({
   sharePrepareTimer: null,
   sharePreparedSnapshotCache: new Map(),
   sharePreparationTasks: new Map(),
+  reminderPermissionPending: false,
   pageDisposed: false,
 
   async onLoad(options) {
@@ -1267,7 +1269,7 @@ Page<RecordPageData, RecordPageCustom>({
   },
 
   handleReminderConfirm() {
-    if (!this.data.reminderDialogVisible) {
+    if (!this.data.reminderDialogVisible || this.reminderPermissionPending) {
       return
     }
 
@@ -1286,7 +1288,9 @@ Page<RecordPageData, RecordPageCustom>({
       this.data.isCreateMode ||
       (this.data.isEditMode && currentReminderAt !== nextReminderAt)
 
-    void runBusy(this, '提醒授权', async () => {
+    this.reminderPermissionPending = true
+
+    void (async () => {
       this.draftReminderAt = nextReminderAt
       this.draftReminderSyncState = shouldRequestPermission
         ? await requestReminderPermission()
@@ -1300,10 +1304,12 @@ Page<RecordPageData, RecordPageCustom>({
         extractAnchorValues(this.data.fieldViews),
         this.data.noteValue
       )
-    }).catch(async (error) => {
+    })().catch(async (error) => {
       this.draftReminderAt = undefined
       this.draftReminderSyncState = undefined
       await handleAsyncError(this, error, '提醒权限获取失败：')
+    }).finally(() => {
+      this.reminderPermissionPending = false
     })
   },
 
