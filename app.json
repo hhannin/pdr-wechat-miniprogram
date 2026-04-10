@@ -17,5 +17,6 @@
     "backgroundColor": "#f4efe5"
   },
   "style": "v2",
-  "componentFramework": "glass-easel"
+  "componentFramework": "glass-easel",
+  "lazyCodeLoading": "requiredComponents"
 }
