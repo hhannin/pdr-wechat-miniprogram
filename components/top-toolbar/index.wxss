@@ -1,7 +1,9 @@
 .top-toolbar-wrap {
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   top: 0;
-  z-index: 40;
+  z-index: 80;
   background: rgba(244, 239, 229, 0.88);
   backdrop-filter: blur(16rpx);
   -webkit-backdrop-filter: blur(16rpx);

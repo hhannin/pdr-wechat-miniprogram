@@ -414,9 +414,9 @@ export interface PostCardView {
 
 function buildReminderBadgeText(
   reminderAt: TimestampMs | undefined,
-  alarmState: AlarmIconState
+  _alarmState: AlarmIconState
 ): string {
-  if (alarmState === 'none' || typeof reminderAt !== 'number') {
+  if (typeof reminderAt !== 'number') {
     return ''
   }
   const date = new Date(reminderAt)

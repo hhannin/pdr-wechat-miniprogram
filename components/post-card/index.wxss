@@ -138,6 +138,10 @@
   background-color: rgba(120, 115, 105, 0.1);
 }
 
+.post-card-alarm-badge-neutral {
+  background-color: rgba(120, 115, 105, 0.1);
+}
+
 .post-card-alarm {
   width: 26rpx;
   height: 26rpx;
@@ -150,6 +154,10 @@
 }
 
 .post-card-alarm-badge-gray .post-card-alarm-text {
+  color: var(--color-text-secondary, #8a8578);
+}
+
+.post-card-alarm-text-neutral {
   color: var(--color-text-secondary, #8a8578);
 }
 

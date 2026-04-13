@@ -24,6 +24,7 @@ Component({
   data: {
     actionsExpanded: false,
     photoFallback: false,
+    photoFallbackWidthRpx: 0,
   },
   methods: {
     handleCardTap(): void {
@@ -65,13 +66,24 @@ Component({
         return
       }
       const isTall = height / width > 1.5
-      if (isTall !== this.data.photoFallback) {
-        this.setData({ photoFallback: isTall })
+      const fallbackHeightRpx = this.data.mode === 'list' ? 540 : 720
+      const fallbackWidthRpx = isTall ? Math.max(1, Math.round((fallbackHeightRpx * width) / height)) : 0
+      if (
+        isTall !== this.data.photoFallback ||
+        fallbackWidthRpx !== this.data.photoFallbackWidthRpx
+      ) {
+        this.setData({
+          photoFallback: isTall,
+          photoFallbackWidthRpx: fallbackWidthRpx,
+        })
       }
     },
     handlePhotoError(): void {
-      if (this.data.photoFallback) {
-        this.setData({ photoFallback: false })
+      if (this.data.photoFallback || this.data.photoFallbackWidthRpx !== 0) {
+        this.setData({
+          photoFallback: false,
+          photoFallbackWidthRpx: 0,
+        })
       }
     },
   },

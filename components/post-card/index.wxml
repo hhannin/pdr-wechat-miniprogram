@@ -17,6 +17,7 @@
   <view wx:if="{{view.hasPhoto}}" class="post-card-photo-row">
     <view
       class="post-card-photo-wrap {{photoFallback ? 'post-card-photo-wrap-fallback' : ''}}"
+      style="{{photoFallback ? 'width:' + photoFallbackWidthRpx + 'rpx;' : ''}}"
       catchtap="handleTapPhoto"
     >
       <image
@@ -36,15 +37,15 @@
     <view class="post-card-meta">
       <text class="post-card-time">{{view.timeText}}</text>
       <view
-        wx:if="{{mode !== 'share' && view.alarmState !== 'none'}}"
-        class="post-card-alarm-badge post-card-alarm-badge-{{view.alarmState}}"
+        wx:if="{{(mode !== 'share' && view.alarmState !== 'none') || (mode === 'share' && view.reminderBadgeText)}}"
+        class="post-card-alarm-badge {{mode === 'share' ? 'post-card-alarm-badge-neutral' : 'post-card-alarm-badge-' + view.alarmState}}"
       >
         <image
           class="post-card-alarm"
-          src="{{view.alarmState === 'green' ? '/assets/icons/ic-alarm-green.svg' : '/assets/icons/ic-alarm-gray.svg'}}"
+          src="{{mode === 'share' ? '/assets/icons/ic-alarm-gray.svg' : (view.alarmState === 'green' ? '/assets/icons/ic-alarm-green.svg' : '/assets/icons/ic-alarm-gray.svg')}}"
           mode="aspectFit"
         />
-        <text class="post-card-alarm-text">{{view.reminderBadgeText}}</text>
+        <text class="post-card-alarm-text {{mode === 'share' ? 'post-card-alarm-text-neutral' : ''}}">{{view.reminderBadgeText}}</text>
       </view>
     </view>
 
