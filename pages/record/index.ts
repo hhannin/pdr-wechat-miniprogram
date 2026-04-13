@@ -524,10 +524,10 @@ Page<RecordPageData, RecordPageCustom>({
           })
           scheduledReminderCreated = true
         } catch {
-          reminderSyncState = 'unscheduled'
+          reminderSyncState = 'sync_failed'
         }
       } else {
-        reminderSyncState = 'unscheduled'
+        reminderSyncState = 'sync_failed'
       }
     }
 
@@ -593,10 +593,10 @@ Page<RecordPageData, RecordPageCustom>({
             locationSubtitle: locPres.subtitle,
           })
         } catch {
-          reminderSyncState = 'unscheduled'
+          reminderSyncState = 'sync_failed'
         }
       } else {
-        reminderSyncState = 'unscheduled'
+        reminderSyncState = 'sync_failed'
       }
     }
 

@@ -77,8 +77,32 @@ const CREATE_SHARE_SNAPSHOT_FUNCTION_NAME = 'createShareSnapshot'
 const GET_SHARE_SNAPSHOT_FUNCTION_NAME = 'getShareSnapshot'
 const SYNC_REMINDER_JOB_FUNCTION_NAME = 'syncReminderJob'
 
+class ReminderRecoveryTimeoutError extends Error {
+  constructor() {
+    super('reminder_recovery_timeout')
+    this.name = 'ReminderRecoveryTimeoutError'
+  }
+}
+
+function createReminderRecoveryTimeout(ms: number): Promise<never> {
+  return new Promise((_, reject) => {
+    setTimeout(() => reject(new ReminderRecoveryTimeoutError()), ms)
+  })
+}
+
 function createShareId(now: number): string {
   return `share_${now.toString(36)}_${Math.random().toString(36).slice(2, 14)}`
+}
+
+function pad2(value: number): string {
+  return `${value}`.padStart(2, '0')
+}
+
+function formatReminderDisplayText(timestampMs: TimestampMs): string {
+  const date = new Date(timestampMs)
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(
+    date.getHours()
+  )}:${pad2(date.getMinutes())}`
 }
 
 function filterAnchorValues(
@@ -527,6 +551,78 @@ export class AppRuntime {
     })
 
     return result.result as SyncReminderJobResult
+  }
+
+  async recoverFailedReminderJobs(
+    itemIds: readonly string[],
+    timeoutMs: number = 2500
+  ): Promise<number> {
+    const uniqueItemIds = [...new Set(itemIds.filter((id) => typeof id === 'string' && id.length > 0))]
+    if (uniqueItemIds.length === 0) {
+      return 0
+    }
+
+    const networkType = await getNetworkType()
+    if (networkType === 'none') {
+      return 0
+    }
+
+    const deadline = this.now() + Math.max(300, Math.floor(timeoutMs))
+    let recoveredCount = 0
+
+    for (const itemId of uniqueItemIds) {
+      const remainingMs = deadline - this.now()
+      if (remainingMs <= 0) {
+        break
+      }
+
+      const item = await this.itemService.getById(itemId)
+      if (!item) {
+        continue
+      }
+
+      if (item.reminderSyncState !== 'sync_failed') {
+        continue
+      }
+
+      if (typeof item.reminderAt !== 'number') {
+        continue
+      }
+
+      if (item.reminderAt <= this.now()) {
+        continue
+      }
+
+      try {
+        await Promise.race([
+          this.syncReminderJob({
+            itemId: item.id,
+            reminderAt: item.reminderAt,
+            reminderDisplayText: formatReminderDisplayText(item.reminderAt),
+            reminderSyncState: 'scheduled',
+            sceneType: item.sceneType,
+            locationTitle: item.location.name,
+            locationSubtitle: item.location.address,
+          }),
+          createReminderRecoveryTimeout(remainingMs),
+        ])
+
+        const recoveredItem = freezeItem({
+          ...item,
+          reminderSyncState: 'scheduled',
+        })
+        await this.repository.save({
+          item: recoveredItem,
+          summary: buildItemSummary(recoveredItem),
+        })
+        recoveredCount += 1
+      } catch (error) {
+        if (error instanceof ReminderRecoveryTimeoutError) {
+          break
+        }
+      }
+    }
+    return recoveredCount
   }
 
   async openSharedSnapshot(shareId: string): Promise<OpenSharedSnapshotResult> {

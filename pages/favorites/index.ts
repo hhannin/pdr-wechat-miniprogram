@@ -61,6 +61,7 @@ type PostCardEvent = WechatMiniprogram.CustomEvent<{ readonly id?: string }>
 type ShareToggleEvent = WechatMiniprogram.CustomEvent<{ readonly selectionKey?: string }>
 
 const SHARE_COVER_IMAGE_URL = '/assets/share/share-cover.png'
+const REMINDER_RECOVERY_TIMEOUT_MS = 2500
 
 function buildFavoriteViews(
   summaries: readonly ItemSummary[],
@@ -102,6 +103,19 @@ Page<FavoritesPageData, FavoritesPageCustom>({
   async onPullDownRefresh() {
     try {
       await this.refresh()
+      const recoveredCount = await this.runtime.recoverFailedReminderJobs(
+        this.data.postViews.map((postView) => postView.id),
+        REMINDER_RECOVERY_TIMEOUT_MS
+      )
+      if (recoveredCount > 0) {
+        await this.refresh()
+        showInfoToast(
+          recoveredCount === 1
+            ? '已恢复 1 条提醒'
+            : `已恢复 ${recoveredCount} 条提醒`,
+          2200
+        )
+      }
     } finally {
       wx.stopPullDownRefresh()
     }

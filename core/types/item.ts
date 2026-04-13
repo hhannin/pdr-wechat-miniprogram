@@ -10,6 +10,7 @@ export type ItemSchemaVersion = typeof ITEM_SCHEMA_VERSION
 export const REMINDER_SYNC_STATES = [
   'scheduled',
   'unscheduled',
+  'sync_failed',
 ] as const
 
 export type ReminderSyncState = typeof REMINDER_SYNC_STATES[number]
