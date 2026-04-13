@@ -1,0 +1,20 @@
+<view
+  wx:if="{{dateLabels.length > 0}}"
+  class="date-scrubber {{expanded ? 'date-scrubber-expanded' : ''}}"
+  catchtouchstart="handleTouchStart"
+  catchtouchmove="handleTouchMove"
+  catchtouchend="handleTouchEnd"
+  catchtouchcancel="handleTouchEnd"
+>
+  <view class="date-scrubber-line"></view>
+  <view wx:if="{{expanded}}" class="date-scrubber-labels">
+    <block wx:for="{{dateLabels}}" wx:key="key" wx:for-item="label">
+      <view
+        class="date-scrubber-label {{label.key === activeDateKey ? 'date-scrubber-label-active' : ''}}"
+      >
+        {{label.text}}
+      </view>
+    </block>
+  </view>
+  <view wx:if="{{expanded && activeLabel}}" class="date-scrubber-bubble">{{activeLabel}}</view>
+</view>

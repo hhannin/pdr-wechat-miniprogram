@@ -1,0 +1,76 @@
+.date-scrubber {
+  position: fixed;
+  top: 200rpx;
+  right: 0;
+  bottom: 200rpx;
+  width: 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  z-index: 30;
+  transition: width 180ms ease, background-color 180ms ease;
+}
+
+.date-scrubber-expanded {
+  width: 140rpx;
+  background: linear-gradient(
+    to left,
+    rgba(255, 251, 245, 0.88),
+    rgba(255, 251, 245, 0)
+  );
+}
+
+.date-scrubber-line {
+  position: absolute;
+  right: 8rpx;
+  top: 0;
+  bottom: 0;
+  width: 4rpx;
+  border-radius: 2rpx;
+  background-color: var(--color-scrubber-line, #c8bfaf);
+  transition: width 180ms ease, background-color 180ms ease;
+}
+
+.date-scrubber-expanded .date-scrubber-line {
+  width: 4rpx;
+  background-color: rgba(31, 106, 70, 0.45);
+}
+
+.date-scrubber-labels {
+  position: absolute;
+  right: 24rpx;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 12rpx 0;
+}
+
+.date-scrubber-label {
+  font-size: 22rpx;
+  color: var(--color-text-secondary, #8a8578);
+  writing-mode: vertical-rl;
+  margin: 4rpx 0;
+}
+
+.date-scrubber-label-active {
+  color: var(--color-brand, #1f6a46);
+  font-weight: 600;
+}
+
+.date-scrubber-bubble {
+  position: absolute;
+  right: 60rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 16rpx 24rpx;
+  white-space: nowrap;
+  background: var(--color-scrubber-bubble, rgba(31, 106, 70, 0.9));
+  color: #fffbf5;
+  border-radius: 24rpx;
+  text-align: center;
+  font-size: var(--font-md, 28rpx);
+  box-shadow: 0 8rpx 24rpx rgba(31, 106, 70, 0.25);
+}

@@ -1,127 +1,35 @@
-<view class="page-shell">
-  <block wx:if="{{pageStatus === 'loading'}}">
-    <view class="record-strip-shell">
-      <view class="record-strip">
-        <view class="record-strip-copy">
-          <view class="record-chip record-chip-muted">分享快照</view>
-        </view>
-      </view>
-    </view>
-    <view class="section-card loading-card">
-      <view class="section-title">载入中</view>
-      <view class="section-desc">正在读取分享内容</view>
-    </view>
-  </block>
+<view class="share-shell">
+  <top-toolbar title="查看分享速记" />
 
-  <block wx:elif="{{pageStatus === 'requires_network'}}">
-    <view class="record-strip-shell">
-      <view class="record-strip">
-        <view class="record-strip-copy">
-          <view class="record-chip record-chip-muted">分享快照</view>
-        </view>
-      </view>
-    </view>
-    <view class="section-card share-banner-card">
-      <view class="section-title">首次打开需要联网</view>
-      <view class="section-desc">当前设备里还没有这份分享缓存，请联网后再打开一次。</view>
-    </view>
-  </block>
+  <view wx:if="{{pageStatus === 'loading'}}" class="share-status">
+    <view class="share-status-title">载入中…</view>
+    <view class="share-status-subtitle">正在读取分享内容</view>
+  </view>
 
-  <block wx:elif="{{pageStatus === 'expired'}}">
-    <view class="record-strip-shell">
-      <view class="record-strip">
-        <view class="record-strip-copy">
-          <view class="record-chip record-chip-muted">分享快照</view>
-        </view>
-      </view>
-    </view>
-    <view class="section-card share-banner-card">
-      <view class="section-title">分享已过期</view>
-      <view class="section-desc">这份分享内容已经失效，当前不能继续查看。</view>
-    </view>
-  </block>
+  <view wx:elif="{{pageStatus === 'requires_network'}}" class="share-status">
+    <view class="share-status-title">首次打开需要联网</view>
+    <view class="share-status-subtitle">当前设备里还没有这份分享缓存，请联网后再打开一次。</view>
+  </view>
 
-  <block wx:elif="{{pageStatus === 'ready'}}">
-    <view class="record-strip-shell">
-      <view class="record-strip">
-        <view class="record-strip-copy">
-          <view class="record-chip">{{sceneLabel}}</view>
-          <view class="record-chip record-chip-muted">分享快照</view>
-        </view>
-      </view>
-    </view>
+  <view wx:elif="{{pageStatus === 'expired'}}" class="share-status">
+    <view class="share-status-title">分享已过期</view>
+    <view class="share-status-subtitle">这份分享内容已经失效，当前不能继续查看。</view>
+  </view>
 
-    <view class="section-card share-summary-card">
-      <view class="section-title">{{shareCardTitle}}</view>
-      <view class="section-desc" wx:if="{{shareCardSubtitle}}">{{shareCardSubtitle}}</view>
-      <view class="location-footer" wx:if="{{hasLocation}}">
-        <button class="inline-button" bindtap="handleOpenLocation">去这里</button>
-      </view>
+  <scroll-view wx:elif="{{pageStatus === 'ready'}}" class="share-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="share-body">
+      <post-card
+        view="{{postView}}"
+        mode="share"
+        bindphototap="handlePhotoTap"
+        bindnavigatetap="handleOpenLocation"
+      />
     </view>
+  </scroll-view>
 
-    <view class="section-card photo-card" wx:if="{{imageState !== 'none'}}">
-      <view
-        class="photo-stage {{hasPhoto ? 'photo-stage-filled photo-stage-tappable' : 'photo-stage-empty photo-stage-tappable'}}"
-        bindtap="handlePhotoTap"
-      >
-        <image wx:if="{{hasPhoto}}" class="photo-preview" src="{{photoPath}}" mode="aspectFit" />
-        <view wx:elif="{{imageState === 'pending'}}" class="photo-empty-shell">
-          <view class="share-image-placeholder">
-            <view class="section-title">正在加载图片</view>
-            <view class="section-desc">首次打开时会缓存原始图片</view>
-          </view>
-        </view>
-        <view wx:else class="photo-empty-shell">
-          <view class="share-image-placeholder">
-            <image class="share-image-fallback-icon" src="/assets/ui/image-off.svg" mode="aspectFit" />
-            <view class="section-title">图片加载失败</view>
-            <view class="section-desc">点击此区域可重试加载图片</view>
-          </view>
-        </view>
-      </view>
-    </view>
-
-    <view class="section-card" wx:if="{{hasFilledFields}}">
-      <block wx:for="{{fieldViews}}" wx:key="key" wx:for-item="fieldView">
-        <view class="field-block">
-          <view class="field-head">
-            <view class="field-title">{{fieldView.label}}</view>
-          </view>
-          <view class="field-static">
-            <view class="field-static-value">{{fieldView.displayValue}}</view>
-          </view>
-        </view>
-      </block>
-    </view>
-
-    <view class="section-card" wx:if="{{hasReminder}}">
-      <view class="section-head">
-        <view class="section-title">提醒时间</view>
-      </view>
-      <view class="field-static">
-        <view class="field-static-value">{{reminderDisplayText}}</view>
-      </view>
-    </view>
-
-    <view class="section-card" wx:if="{{hasNote}}">
-      <view class="section-head">
-        <view class="section-title">备注</view>
-      </view>
-      <view class="note-view">
-        <view class="note-text">{{noteDisplayText}}</view>
-      </view>
-    </view>
-  </block>
-
-  <view class="action-dock share-home-dock">
-    <view class="action-stack action-stack-single">
-      <view
-        class="action-button action-button-primary"
-        bindtap="handleBackHome"
-        hover-class="action-button-pressed"
-      >
-        返回小程序主页
-      </view>
+  <view class="share-home-bar">
+    <view class="share-home-button" bindtap="handleBackHome" hover-class="share-home-button-hover">
+      返回小程序主页
     </view>
   </view>
 </view>

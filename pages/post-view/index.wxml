@@ -1,0 +1,39 @@
+<view class="post-view-shell">
+  <top-toolbar title="查看速记" />
+
+  <view wx:if="{{!pageReady}}" class="post-view-empty">
+    <view class="post-view-empty-title">载入中…</view>
+  </view>
+
+  <block wx:elif="{{loadError}}">
+    <view class="post-view-empty">
+      <view class="post-view-empty-title">{{loadError}}</view>
+      <view class="post-view-empty-subtitle">可能已被删除或未同步</view>
+    </view>
+  </block>
+
+  <scroll-view wx:else class="post-view-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="post-view-body">
+      <post-card
+        view="{{postView}}"
+        mode="detail"
+        fading="{{fading}}"
+        bindphototap="handlePhotoTap"
+        bindnavigatetap="handleNavigateTap"
+        bindsharetap="handleShareTap"
+        bindfavoritetap="handleFavoriteTap"
+        bindedittap="handleEditTap"
+        binddeletetap="handleDeleteTap"
+      />
+    </view>
+  </scroll-view>
+
+  <share-sheet
+    visible="{{shareFlowVisible}}"
+    selection-items="{{shareSelectionItems}}"
+    prepare-state="{{sharePrepareState}}"
+    bindclose="handleShareClose"
+    bindtoggle="handleShareToggle"
+    bindretry="handleShareRetry"
+  />
+</view>

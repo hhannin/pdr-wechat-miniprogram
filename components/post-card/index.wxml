@@ -1,0 +1,97 @@
+<view
+  class="post-card post-card-{{mode}} {{fading ? 'post-card-fading' : ''}} {{actionsExpanded ? 'post-card-elevated' : ''}}"
+  bindtap="handleCardTap"
+  hover-class="{{mode === 'list' ? 'post-card-pressed' : ''}}"
+>
+  <view class="post-card-headline {{mode === 'list' ? 'post-card-headline-clamp' : ''}}">
+    {{view.headline}}
+  </view>
+
+  <view
+    wx:if="{{view.hasNote}}"
+    class="post-card-note {{mode === 'list' ? 'post-card-note-clamp' : ''}}"
+  >
+    {{view.noteText}}
+  </view>
+
+  <view wx:if="{{view.hasPhoto}}" class="post-card-photo-row">
+    <view
+      class="post-card-photo-wrap {{photoFallback ? 'post-card-photo-wrap-fallback' : ''}}"
+      catchtap="handleTapPhoto"
+    >
+      <image
+        class="post-card-photo"
+        src="{{view.photoPath}}"
+        mode="{{photoFallback ? 'aspectFit' : 'widthFix'}}"
+        show-menu-by-longpress="{{false}}"
+        bindload="handlePhotoLoad"
+        binderror="handlePhotoError"
+      />
+    </view>
+  </view>
+
+  <view class="post-card-divider"></view>
+
+  <view class="post-card-footer">
+    <view class="post-card-meta">
+      <text class="post-card-time">{{view.timeText}}</text>
+      <view
+        wx:if="{{mode !== 'share' && view.alarmState !== 'none'}}"
+        class="post-card-alarm-badge post-card-alarm-badge-{{view.alarmState}}"
+      >
+        <image
+          class="post-card-alarm"
+          src="{{view.alarmState === 'green' ? '/assets/icons/ic-alarm-green.svg' : '/assets/icons/ic-alarm-gray.svg'}}"
+          mode="aspectFit"
+        />
+        <text class="post-card-alarm-text">{{view.reminderBadgeText}}</text>
+      </view>
+    </view>
+
+    <view class="post-card-actions">
+      <view class="post-card-action" catchtap="handleNavigate" hover-class="post-card-action-pressed">
+        <image class="post-card-action-icon" src="/assets/icons/ic-navigate-line.svg" mode="aspectFit" />
+      </view>
+
+      <block wx:if="{{mode === 'detail'}}">
+        <view class="post-card-action" catchtap="handleShare" hover-class="post-card-action-pressed">
+          <image class="post-card-action-icon" src="/assets/icons/ic-share-line.svg" mode="aspectFit" />
+        </view>
+
+        <block wx:if="{{actionsExpanded}}">
+          <view class="post-card-action" catchtap="handleFavorite" hover-class="post-card-action-pressed">
+            <image
+              class="post-card-action-icon {{view.isFavorite ? 'post-card-action-icon-bump' : ''}}"
+              src="{{view.isFavorite ? '/assets/icons/ic-bookmark-fill.svg' : '/assets/icons/ic-bookmark-line.svg'}}"
+              mode="aspectFit"
+            />
+          </view>
+          <view class="post-card-action" catchtap="handleEdit" hover-class="post-card-action-pressed">
+            <image class="post-card-action-icon" src="/assets/icons/ic-edit-line.svg" mode="aspectFit" />
+          </view>
+          <view class="post-card-action" catchtap="handleDelete" hover-class="post-card-action-pressed">
+            <image class="post-card-action-icon" src="/assets/icons/ic-delete-line.svg" mode="aspectFit" />
+          </view>
+        </block>
+
+        <view
+          class="post-card-action"
+          catchtap="handleToggleMore"
+          hover-class="post-card-action-pressed"
+        >
+          <image
+            class="post-card-action-icon"
+            src="/assets/icons/ic-more-line.svg"
+            mode="aspectFit"
+          />
+        </view>
+      </block>
+    </view>
+  </view>
+</view>
+
+<view
+  wx:if="{{actionsExpanded}}"
+  class="post-card-backdrop"
+  catchtap="handleCloseMore"
+></view>

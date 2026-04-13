@@ -1,0 +1,43 @@
+<view class="favorites-shell">
+  <view wx:if="{{!pageReady}}" class="favorites-empty">
+    <view class="favorites-empty-title">载入中…</view>
+  </view>
+
+  <block wx:elif="{{!hasItems}}">
+    <view class="favorites-empty">
+      <view class="favorites-empty-title">还没有收藏</view>
+      <view class="favorites-empty-subtitle">点帖子上的收藏图标添加</view>
+    </view>
+  </block>
+
+  <scroll-view wx:else class="favorites-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="favorites-list">
+      <block wx:for="{{postViews}}" wx:key="id" wx:for-item="postView">
+        <view class="favorites-item">
+          <post-card
+            view="{{postView}}"
+            mode="list"
+            fading="{{fadingIds[postView.id]}}"
+            bindcardtap="handleCardTap"
+            bindphototap="handlePhotoTap"
+            bindnavigatetap="handleNavigateTap"
+            bindsharetap="handleShareTap"
+            bindfavoritetap="handleFavoriteTap"
+            bindedittap="handleEditTap"
+            binddeletetap="handleDeleteTap"
+          />
+        </view>
+      </block>
+      <view class="favorites-list-bottom-pad"></view>
+    </view>
+  </scroll-view>
+
+  <share-sheet
+    visible="{{shareFlowVisible}}"
+    selection-items="{{shareSelectionItems}}"
+    prepare-state="{{sharePrepareState}}"
+    bindclose="handleShareClose"
+    bindtoggle="handleShareToggle"
+    bindretry="handleShareRetry"
+  />
+</view>

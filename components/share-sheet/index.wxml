@@ -1,0 +1,60 @@
+<view wx:if="{{visible}}" class="share-sheet-overlay" catchtouchmove="noop">
+  <view class="share-sheet-backdrop" bindtap="handleClose"></view>
+  <view class="share-sheet">
+    <view class="share-sheet-handle"></view>
+    <view class="share-sheet-header">
+      <view class="share-sheet-title">分享这条记录</view>
+      <view class="share-sheet-close" bindtap="handleClose" hover-class="share-sheet-close-pressed">
+        <image class="share-sheet-close-icon" src="/assets/icons/ic-close-line.svg" mode="aspectFit" />
+      </view>
+    </view>
+
+    <view class="share-sheet-body">
+      <view class="share-sheet-row share-sheet-row-locked">
+        <view class="share-sheet-label">位置</view>
+        <view class="share-sheet-check share-sheet-check-active share-sheet-check-locked">
+          <view class="share-sheet-check-mark">✓</view>
+        </view>
+      </view>
+
+      <block wx:for="{{selectionItems}}" wx:key="key" wx:for-item="selectionItem">
+        <view
+          class="share-sheet-row"
+          data-selection-key="{{selectionItem.key}}"
+          bindtap="handleToggle"
+          hover-class="share-sheet-row-pressed"
+        >
+          <view class="share-sheet-label">{{selectionItem.label}}</view>
+          <view class="share-sheet-check {{selectionItem.checked ? 'share-sheet-check-active' : ''}}">
+            <view wx:if="{{selectionItem.checked}}" class="share-sheet-check-mark">✓</view>
+          </view>
+        </view>
+      </block>
+    </view>
+
+    <view class="share-sheet-footer">
+      <button
+        wx:if="{{prepareState === 'ready'}}"
+        class="share-sheet-button share-sheet-button-primary"
+        open-type="share"
+        hover-class="share-sheet-button-pressed"
+      >分享给好友</button>
+
+      <button
+        wx:elif="{{prepareState === 'preparing'}}"
+        class="share-sheet-button share-sheet-button-primary"
+        loading
+        disabled
+      >准备中</button>
+
+      <button
+        wx:else
+        class="share-sheet-button share-sheet-button-primary"
+        bindtap="handleRetry"
+        hover-class="share-sheet-button-pressed"
+      >点击重试</button>
+
+      <view class="share-sheet-hint">敏感信息请勿分享给陌生人</view>
+    </view>
+  </view>
+</view>

@@ -1,31 +1,63 @@
-@import "../record/index.wxss";
-
-.page-shell {
-  padding-top: 18rpx;
-  padding-bottom: 224rpx;
+.share-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-.share-banner-card {
-  padding-bottom: 22rpx;
+.share-scroll {
+  flex: 1;
+  height: 100%;
 }
 
-.share-summary-card .section-title {
-  margin-bottom: 6rpx;
+.share-body {
+  padding: 16rpx 0 calc(140rpx + env(safe-area-inset-bottom));
 }
 
-.share-home-dock {
-  z-index: 16;
-}
-
-.share-image-placeholder {
+.share-status {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10rpx;
+  justify-content: center;
+  padding: 120rpx 48rpx calc(140rpx + env(safe-area-inset-bottom));
   text-align: center;
 }
 
-.share-image-fallback-icon {
-  width: 92rpx;
-  height: 92rpx;
+.share-status-title {
+  font-size: var(--font-lg, 30rpx);
+  color: var(--color-text-primary, #2d2a1f);
+  font-weight: 500;
+}
+
+.share-status-subtitle {
+  margin-top: 16rpx;
+  font-size: var(--font-md, 28rpx);
+  color: var(--color-text-secondary, #8a8578);
+  line-height: 1.6;
+}
+
+.share-home-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  padding: 16rpx 28rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: rgba(244, 239, 229, 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.share-home-button {
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  font-size: var(--font-lg, 30rpx);
+  font-weight: 500;
+  color: #fff;
+  background: var(--color-brand, #1f6a46);
+  border-radius: 16rpx;
+}
+
+.share-home-button-hover {
+  opacity: 0.8;
 }

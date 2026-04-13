@@ -1,14 +1,12 @@
 {
-  "navigationBarTitleText": "找回去",
+  "navigationBarTitleText": "收藏",
   "navigationBarBackgroundColor": "#f4efe5",
   "navigationBarTextStyle": "black",
   "backgroundColor": "#f4efe5",
   "enablePullDownRefresh": true,
   "backgroundTextStyle": "dark",
   "usingComponents": {
-    "top-toolbar": "/components/top-toolbar/index",
     "post-card": "/components/post-card/index",
-    "date-scrubber": "/components/date-scrubber/index",
     "share-sheet": "/components/share-sheet/index"
   }
 }

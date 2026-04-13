@@ -1,8 +1,9 @@
 {
   "pages": [
-    "pages/scene/index",
-    "pages/records/index",
     "pages/record/index",
+    "pages/records/index",
+    "pages/post-view/index",
+    "pages/favorites/index",
     "pages/share/index"
   ],
   "permission": {

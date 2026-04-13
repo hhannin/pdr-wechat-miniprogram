@@ -1,354 +1,187 @@
-<view class="page-shell" wx:if="{{pageReady}}">
-  <view class="record-strip-shell">
-    <view class="record-strip">
-      <view class="record-strip-copy">
-        <view class="record-chip">{{sceneLabel}}</view>
-        <view class="record-chip record-chip-muted">{{isCreateMode ? '记下' : isEditMode ? '编辑' : '已记'}}</view>
-        <view
-          wx:if="{{showReminderChip}}"
-          class="record-chip {{reminderPresentationState === 'active' ? 'record-chip-reminder-active' : 'record-chip-reminder-muted'}}"
-        >
-          提醒
+<view class="record-shell">
+  <top-toolbar
+    title="{{isEditMode ? '编辑速记' : '创建速记'}}"
+    right-icon="{{isEditMode ? '' : '/assets/icons/ic-list-line.svg'}}"
+    bindrighttap="handleGoList"
+  />
+  <scroll-view wx:if="{{pageReady}}" class="record-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+    <view class="record-form">
+
+      <!-- 位置 -->
+      <view class="record-section">
+        <view wx:if="{{!hasLocation}}" class="record-location-cta" bindtap="handlePickLocation">
+          <image class="record-location-cta-icon" src="/assets/icons/ic-map-pin-line.svg" mode="aspectFit" />
+          <view class="record-location-cta-text">选择位置</view>
+        </view>
+        <view wx:else class="record-location-card {{isEditMode ? 'record-location-card-disabled' : ''}}" bindtap="handlePickLocation">
+          <view class="record-location-title">{{locationTitle}}</view>
+          <view wx:if="{{locationSubtitle}}" class="record-location-subtitle">{{locationSubtitle}}</view>
         </view>
       </view>
-      <view class="record-share-slot">
-        <view
-          wx:if="{{isViewMode}}"
-          class="record-share-button {{busy ? 'record-share-button-disabled' : ''}}"
-          bindtap="handleOpenShare"
-        >
-          <view class="record-share-text">分享快照</view>
-        </view>
-        <view wx:else class="record-share-placeholder"></view>
-      </view>
-    </view>
-  </view>
 
-  <view class="section-card photo-card">
-    <view
-      wx:if="{{isCreateMode || canAttachPhoto}}"
-      class="photo-stage {{hasPhoto ? 'photo-stage-filled' : 'photo-stage-empty'}} photo-stage-tappable {{busy ? 'photo-stage-disabled' : ''}}"
-      bindtap="handlePhotoTap"
-    >
-      <view
-        wx:if="{{(isCreateMode || canAttachPhoto) && hasPhoto}}"
-        class="stage-clear"
-        catchtap="handleClearDraftPhoto"
-      >
-        ×
+      <!-- 备注 -->
+      <view class="record-section">
+        <view class="record-section-label">备注</view>
+        <textarea
+          wx:if="{{textareaReady}}"
+          class="record-textarea"
+          value="{{noteValue}}"
+          placeholder="再多记录一些"
+          maxlength="500"
+          adjust-position="{{true}}"
+          hold-keyboard="{{true}}"
+          bindinput="handleNoteInput"
+        />
       </view>
-      <image wx:if="{{hasPhoto}}" class="photo-preview" src="{{photoPath}}" mode="aspectFit" />
-      <view wx:else class="photo-empty-shell">
-        <image class="photo-empty-icon" src="/assets/ui/camera-line.svg" mode="aspectFit" />
-      </view>
-    </view>
-    <view
-      wx:else
-      class="photo-stage {{hasPhoto ? 'photo-stage-filled' : 'photo-stage-empty'}} {{hasPhoto ? 'photo-stage-tappable' : ''}}"
-      bindtap="handlePhotoTap"
-    >
-      <image wx:if="{{hasPhoto}}" class="photo-preview" src="{{photoPath}}" mode="aspectFit" />
-      <view wx:else class="photo-empty-shell">
-        <image class="photo-empty-icon" src="/assets/ui/camera-line.svg" mode="aspectFit" />
-      </view>
-    </view>
-  </view>
 
-  <view class="section-card location-card">
-    <view
-      wx:if="{{isCreateMode}}"
-      class="location-stage {{busy ? 'location-stage-disabled' : ''}}"
-      bindtap="handlePickLocation"
-    >
-      <view
-        wx:if="{{hasLocation}}"
-        class="stage-clear"
-        catchtap="handleClearDraftLocation"
-      >
-        ×
-      </view>
-      <view class="location-stage-shell">
-        <image class="location-stage-icon" src="/assets/ui/map-select.svg" mode="aspectFit" />
-        <view class="location-stage-copy">
-          <view class="location-title {{hasLocation ? '' : 'placeholder-text'}}">{{locationTitle}}</view>
-          <view class="location-subtitle" wx:if="{{locationSubtitle}}">{{locationSubtitle}}</view>
-        </view>
-      </view>
-    </view>
-    <view wx:else class="location-shell">
-      <image class="location-icon" src="/assets/ui/map-pin.svg" mode="aspectFit" />
-      <view class="location-copy">
-        <view class="location-title {{hasLocation ? '' : 'placeholder-text'}}">{{locationTitle}}</view>
-        <view class="location-subtitle" wx:if="{{locationSubtitle}}">{{locationSubtitle}}</view>
-      </view>
-    </view>
-    <view class="location-footer" wx:if="{{hasLocation}}">
-      <button class="inline-button" bindtap="handleOpenLocation" disabled="{{busy || !hasLocation}}">
-        去这里
-      </button>
-    </view>
-  </view>
-
-  <view class="section-card reminder-card" wx:if="{{!isViewMode || hasReminder}}">
-    <view
-      wx:if="{{!isViewMode}}"
-      class="reminder-stage {{busy ? 'reminder-stage-disabled' : ''}}"
-      bindtap="handleOpenReminderDialog"
-    >
-      <view
-        wx:if="{{hasReminder}}"
-        class="stage-clear"
-        catchtap="handleClearReminder"
-      >
-        ×
-      </view>
-      <view class="reminder-copy">
-        <view class="section-title">提醒时间</view>
-        <view class="reminder-value {{hasReminder ? (reminderPresentationState === 'active' ? 'reminder-value-active' : 'reminder-value-inactive') : 'placeholder-text'}}">
-          {{hasReminder ? reminderDisplayText : '选一个提醒时间'}}
-        </view>
-      </view>
-    </view>
-
-    <view wx:else class="reminder-view">
-      <view class="section-head">
-        <view class="section-title">提醒时间</view>
-      </view>
-      <view class="field-static">
-        <view class="field-static-value {{reminderPresentationState === 'active' ? 'reminder-value-active' : 'reminder-value-inactive'}}">
-          {{reminderDisplayText}}
-        </view>
-      </view>
-    </view>
-  </view>
-
-  <view class="section-card" wx:if="{{fieldViews.length > 0 && (!isViewMode || hasFilledFields)}}">
-    <block wx:for="{{fieldViews}}" wx:key="key" wx:for-item="fieldView">
-      <view class="field-block" wx:if="{{!isViewMode || fieldView.value}}">
-        <view class="field-head">
-          <view class="field-title">{{fieldView.label}}</view>
-        </view>
-
-        <view class="field-static" wx:if="{{isViewMode}}">
-          <view class="field-static-value {{fieldView.value ? '' : 'placeholder-text'}}">
-            {{fieldView.displayValue}}
+      <!-- 提醒 -->
+      <view class="record-section">
+        <view class="record-reminder-head">
+          <view class="record-reminder-label">
+            <image class="record-reminder-icon" src="/assets/icons/ic-alarm-gray.svg" mode="aspectFit" />
+            <text>提醒</text>
           </view>
+          <switch
+            class="record-reminder-switch"
+            checked="{{reminderEnabled}}"
+            color="#1f6a46"
+            bindchange="handleReminderToggle"
+          />
+        </view>
+        <view wx:if="{{reminderEnabled}}" class="record-reminder-pickers">
+          <picker
+            mode="date"
+            value="{{reminderPickerDate}}"
+            start="{{reminderPickerMinDate}}"
+            bindchange="handleReminderDateChange"
+          >
+            <view class="record-reminder-picker">
+              <view class="record-reminder-picker-label">日期</view>
+              <view class="record-reminder-picker-value">{{reminderPickerDate || '请选择'}}</view>
+            </view>
+          </picker>
+          <picker
+            mode="time"
+            value="{{reminderPickerTime}}"
+            bindchange="handleReminderTimeChange"
+          >
+            <view class="record-reminder-picker">
+              <view class="record-reminder-picker-label">时间</view>
+              <view class="record-reminder-picker-value">{{reminderPickerTime || '请选择'}}</view>
+            </view>
+          </picker>
+        </view>
+      </view>
+
+      <!-- 更多线索 -->
+      <view class="record-section">
+        <view class="record-more-head" bindtap="handleToggleMoreClues">
+          <view class="record-more-title">更多线索</view>
+          <image
+            class="record-more-chevron {{moreCluesExpanded ? 'record-more-chevron-open' : ''}}"
+            src="/assets/icons/ic-chevron-down.svg"
+            mode="aspectFit"
+          />
         </view>
 
-        <block wx:if="{{!isViewMode}}">
-          <input
-            class="field-input"
-            value="{{fieldView.value}}"
-            placeholder="{{fieldView.placeholder}}"
-            maxlength="{{fieldView.maxLength}}"
-            data-field-key="{{fieldView.key}}"
-            bindinput="handleFieldInput"
-            disabled="{{busy}}"
-          />
-          <view
-            class="suggestion-wrap"
-            wx:if="{{fieldView.control === 'hybrid' && fieldView.suggestions.length > 0}}"
-          >
-            <block wx:for="{{fieldView.suggestions}}" wx:key="value" wx:for-item="suggestion">
-              <view
-                class="suggestion-chip {{suggestion.isActive ? 'suggestion-chip-active' : ''}}"
-                data-field-key="{{fieldView.key}}"
-                data-suggestion-value="{{suggestion.value}}"
-                bindtap="handleFieldSuggestionTap"
-              >
-                {{suggestion.label}}
+        <view wx:if="{{moreCluesExpanded}}" class="record-more-body">
+          <!-- 照片 -->
+          <view class="record-sub-section">
+            <view class="record-sub-label">照片</view>
+            <block wx:if="{{hasPhoto}}">
+              <view class="record-photo">
+                <image
+                  class="record-photo-image"
+                  src="{{photoPath}}"
+                  mode="widthFix"
+                  bindtap="handlePreviewPhoto"
+                />
+                <view wx:if="{{!isEditMode || !currentItemHasPhoto}}" class="record-photo-remove" catchtap="handleClearPhoto">
+                  <image class="record-photo-remove-icon" src="/assets/icons/ic-close-line.svg" mode="aspectFit" />
+                </view>
               </view>
             </block>
+            <view wx:else class="record-photo-cta" bindtap="handleCapturePhoto">
+              <image class="record-photo-cta-icon" src="/assets/icons/ic-camera-line.svg" mode="aspectFit" />
+              <view class="record-photo-cta-text">添加照片</view>
+            </view>
           </view>
-        </block>
+
+          <!-- 场景 -->
+          <view class="record-sub-section">
+            <view class="record-sub-label">场景</view>
+            <view
+              class="record-scene-select {{isEditMode ? 'record-scene-select-disabled' : ''}}"
+              bindtap="handleToggleSceneDropdown"
+            >
+              <view class="record-scene-select-value">{{sceneLabel}}</view>
+              <image
+                wx:if="{{!isEditMode}}"
+                class="record-scene-select-chevron {{sceneDropdownVisible ? 'record-scene-select-chevron-open' : ''}}"
+                src="/assets/icons/ic-chevron-down.svg"
+                mode="aspectFit"
+              />
+            </view>
+            <view wx:if="{{sceneDropdownVisible}}" class="record-scene-dropdown">
+              <block wx:for="{{sceneOptions}}" wx:key="type" wx:for-item="option">
+                <view
+                  class="record-scene-dropdown-item {{option.type === sceneType ? 'record-scene-dropdown-item-active' : ''}}"
+                  data-scene-type="{{option.type}}"
+                  bindtap="handlePickSceneType"
+                >{{option.label}}</view>
+              </block>
+            </view>
+          </view>
+
+          <!-- 场景线索字段 -->
+          <block wx:if="{{fieldViews.length > 0}}">
+            <view wx:for="{{fieldViews}}" wx:key="key" wx:for-item="fieldView" class="record-sub-section">
+              <view class="record-sub-label">{{fieldView.label}}</view>
+              <input
+                class="record-field-input"
+                value="{{fieldView.value}}"
+                placeholder="{{fieldView.placeholder}}"
+                maxlength="{{fieldView.maxLength}}"
+                data-field-key="{{fieldView.key}}"
+                bindinput="handleFieldInput"
+              />
+              <view wx:if="{{fieldView.suggestions.length > 0}}" class="record-field-suggestions">
+                <block wx:for="{{fieldView.suggestions}}" wx:key="value" wx:for-item="suggestion">
+                  <view
+                    class="record-field-suggestion {{suggestion.isActive ? 'record-field-suggestion-active' : ''}}"
+                    data-field-key="{{fieldView.key}}"
+                    data-suggestion-value="{{suggestion.value}}"
+                    bindtap="handleFieldSuggestionTap"
+                  >{{suggestion.label}}</view>
+                </block>
+              </view>
+            </view>
+          </block>
+        </view>
       </view>
-    </block>
+
+      <view class="record-form-pad"></view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{!pageReady}}" class="record-empty">
+    <view class="record-empty-title">载入中…</view>
   </view>
 
-  <view class="section-card" wx:if="{{!isViewMode || hasNote}}">
-    <view class="section-head" wx:if="{{!isViewMode}}">
-      <view class="section-title">备注</view>
-    </view>
-
-    <view class="note-view" wx:if="{{isViewMode}}">
-      <view class="note-text">{{noteDisplayText}}</view>
-    </view>
-
-    <block wx:if="{{!isViewMode}}">
-      <textarea
-        class="note-input"
-        auto-height
-        maxlength="2000"
-        value="{{noteValue}}"
-        placeholder="再多记一点"
-        bindinput="handleNoteInput"
+  <view wx:if="{{pageReady}}" class="record-save-bar">
+    <view class="record-save-bar-buttons">
+      <button
+        class="record-save-button {{canSave ? '' : 'record-save-button-disabled'}}"
+        disabled="{{!canSave || busy}}"
+        loading="{{busy}}"
+        bindtap="handleSave"
+      >{{busy ? '保存中' : '保存'}}</button>
+      <button
+        wx:if="{{isEditMode}}"
+        class="record-delete-button"
         disabled="{{busy}}"
-      />
-      <view class="note-meta">{{noteLength}} / 2000</view>
-    </block>
-  </view>
-
-  <view class="action-dock" wx:if="{{isCreateMode}}">
-    <view class="action-stack action-stack-single">
-      <view
-        class="action-button action-button-primary {{busy || !canCreate ? 'action-button-disabled' : ''}}"
-        bindtap="handleCreate"
-        hover-class="action-button-pressed"
-      >
-        {{busy ? '记下中' : '记下'}}
-      </view>
+        bindtap="handleDelete"
+      >删除</button>
     </view>
-  </view>
-
-  <view class="action-dock" wx:elif="{{isViewMode && !shareFlowVisible}}">
-    <view class="action-stack action-stack-dual">
-      <view
-        class="action-button action-button-primary {{busy ? 'action-button-disabled' : ''}}"
-        bindtap="handleEnterEdit"
-        hover-class="action-button-pressed"
-      >
-        编辑
-      </view>
-      <view
-        class="action-button action-button-danger {{busy ? 'action-button-disabled' : ''}}"
-        bindtap="handleDeleteItem"
-        hover-class="action-button-pressed"
-      >
-        删除
-      </view>
-    </view>
-  </view>
-
-  <view class="action-dock" wx:elif="{{isEditMode}}">
-    <view class="action-stack action-stack-dual">
-      <view
-        class="action-button action-button-primary {{busy || !canSave ? 'action-button-disabled' : ''}}"
-        bindtap="handleSaveEdit"
-        hover-class="action-button-pressed"
-      >
-        {{busy ? '保存中' : '保存'}}
-      </view>
-      <view
-        class="action-button action-button-secondary {{busy ? 'action-button-disabled' : ''}}"
-        bindtap="handleCancelEdit"
-        hover-class="action-button-pressed"
-      >
-        返回
-      </view>
-    </view>
-  </view>
-
-  <view class="share-dialog-overlay" wx:if="{{shareFlowVisible}}">
-    <view class="share-dialog-backdrop"></view>
-    <view class="share-dialog">
-      <view class="share-dialog-header">
-        <view class="share-dialog-title">选择分享内容</view>
-        <view class="share-dialog-close" bindtap="handleCloseShareFlow">
-          <image class="share-dialog-close-icon" src="/assets/ui/close-line.svg" mode="aspectFit" />
-        </view>
-      </view>
-
-      <view class="share-dialog-body">
-        <view class="share-dialog-row share-dialog-row-locked">
-          <view class="share-dialog-copy">
-            <view class="share-dialog-label">位置</view>
-          </view>
-          <view class="share-choice-box share-choice-box-active share-choice-box-locked">
-            <view class="share-choice-check">✓</view>
-          </view>
-        </view>
-
-        <block wx:for="{{shareSelectionItems}}" wx:key="key" wx:for-item="selectionItem">
-          <view
-            class="share-dialog-row"
-            data-selection-key="{{selectionItem.key}}"
-            bindtap="handleToggleShareSelection"
-          >
-            <view class="share-dialog-copy">
-              <view class="share-dialog-label">{{selectionItem.label}}</view>
-            </view>
-            <view class="share-choice-box {{selectionItem.checked ? 'share-choice-box-active' : ''}}">
-              <view wx:if="{{selectionItem.checked}}" class="share-choice-check">✓</view>
-            </view>
-          </view>
-        </block>
-      </view>
-
-      <view class="share-dialog-footer">
-        <view class="share-dialog-button-slot">
-          <button
-            wx:if="{{sharePrepareState === 'ready'}}"
-            class="action-button action-button-primary action-button-native share-dialog-button"
-            open-type="share"
-            hover-class="action-button-pressed"
-          >
-            发送给好友
-          </button>
-
-          <view wx:elif="{{sharePrepareState === 'preparing'}}" class="action-button action-button-primary action-button-loading share-dialog-button">
-            <view class="share-loading-spinner"></view>
-          </view>
-
-          <view
-            wx:else
-            class="action-button action-button-primary share-dialog-button"
-            bindtap="handleRetrySharePreparation"
-            hover-class="action-button-pressed"
-          >
-            点击重试
-          </view>
-        </view>
-
-        <view class="share-dialog-hint">敏感信息请勿分享给陌生人</view>
-      </view>
-    </view>
-  </view>
-
-  <view class="share-dialog-overlay" wx:if="{{reminderDialogVisible}}">
-    <view class="share-dialog-backdrop"></view>
-    <view class="share-dialog">
-      <view class="share-dialog-header">
-        <view class="share-dialog-title">提醒时间</view>
-        <view class="share-dialog-close" bindtap="handleCloseReminderDialog">
-          <image class="share-dialog-close-icon" src="/assets/ui/close-line.svg" mode="aspectFit" />
-        </view>
-      </view>
-
-      <view class="share-dialog-body">
-        <picker mode="date" value="{{reminderPickerDate}}" bindchange="handleReminderDateChange">
-          <view class="share-dialog-row">
-            <view class="share-dialog-copy">
-              <view class="share-dialog-label">日期</view>
-            </view>
-            <view class="share-dialog-value">{{reminderPickerDate}}</view>
-          </view>
-        </picker>
-
-        <picker mode="time" value="{{reminderPickerTime}}" bindchange="handleReminderTimeChange">
-          <view class="share-dialog-row">
-            <view class="share-dialog-copy">
-              <view class="share-dialog-label">时间</view>
-            </view>
-            <view class="share-dialog-value">{{reminderPickerTime}}</view>
-          </view>
-        </picker>
-      </view>
-
-      <view class="share-dialog-footer">
-        <view
-          class="action-button action-button-primary share-dialog-button"
-          bindtap="handleReminderConfirm"
-          hover-class="action-button-pressed"
-        >
-          确定
-        </view>
-      </view>
-    </view>
-  </view>
-</view>
-
-<view class="page-shell" wx:else>
-  <view class="section-card loading-card">
-    <view class="section-title">载入中</view>
   </view>
 </view>

@@ -1,0 +1,23 @@
+<view class="top-toolbar-wrap">
+  <view class="top-toolbar">
+    <view
+      wx:if="{{leftIcon}}"
+      class="top-toolbar-slot"
+      bindtap="handleLeftTap"
+      hover-class="top-toolbar-slot-pressed"
+    >
+      <image class="top-toolbar-icon" src="{{leftIcon}}" mode="aspectFit" />
+    </view>
+    <view wx:else class="top-toolbar-spacer"></view>
+    <view class="top-toolbar-title">{{title}}</view>
+    <view
+      wx:if="{{rightIcon}}"
+      class="top-toolbar-slot"
+      bindtap="handleRightTap"
+      hover-class="top-toolbar-slot-pressed"
+    >
+      <image class="top-toolbar-icon" src="{{rightIcon}}" mode="aspectFit" />
+    </view>
+    <view wx:else class="top-toolbar-spacer"></view>
+  </view>
+</view>

@@ -2,13 +2,10 @@ import type { ItemSummary } from '../../core/types/index'
 import { appRuntime, type AppRuntime } from '../common/runtime'
 import {
   buildPostCardViewFromSummary,
-  resolveEffectiveTimestamp,
   type PostCardView,
 } from '../common/frontend-presenters'
 import {
-  buildCreateRecordUrl,
   buildEditRecordUrl,
-  buildFavoritesUrl,
   buildPostViewUrl,
 } from '../common/frontend-config'
 import {
@@ -26,12 +23,10 @@ import {
   previewLocalImage,
 } from '../common/feedback'
 
-interface RecordsPageData {
+interface FavoritesPageData {
   readonly pageReady: boolean
   readonly hasItems: boolean
   readonly postViews: readonly PostCardView[]
-  readonly dateKeys: readonly string[]
-  readonly scrollIntoViewId: string
   readonly fadingIds: Readonly<Record<string, boolean>>
   readonly shareFlowVisible: boolean
   readonly shareSelectionItems: readonly ShareSelectionItemView[]
@@ -39,11 +34,11 @@ interface RecordsPageData {
   readonly shareCoverImage: string
 }
 
-interface RecordsPageCustom {
+interface FavoritesPageCustom {
   readonly runtime: AppRuntime
   shareFlow: ShareFlowController
   summaries: readonly ItemSummary[]
-  onLoad(query: Record<string, string | undefined>): void
+  onLoad(): void
   onUnload(): void
   onShow(): Promise<void>
   onPullDownRefresh(): Promise<void>
@@ -57,54 +52,30 @@ interface RecordsPageCustom {
   handleFavoriteTap(event: PostCardEvent): Promise<void>
   handleEditTap(event: PostCardEvent): void
   handleDeleteTap(event: PostCardEvent): Promise<void>
-  handleGoFavorites(): void
-  handleGoCreate(): void
-  handleDateChange(event: DateChangeEvent): void
   handleShareClose(): void
   handleShareToggle(event: ShareToggleEvent): void
   handleShareRetry(): void
 }
 
 type PostCardEvent = WechatMiniprogram.CustomEvent<{ readonly id?: string }>
-type DateChangeEvent = WechatMiniprogram.CustomEvent<{ readonly dateKey?: string }>
 type ShareToggleEvent = WechatMiniprogram.CustomEvent<{ readonly selectionKey?: string }>
 
 const SHARE_COVER_IMAGE_URL = '/assets/share/share-cover.png'
 
-function buildPostViews(
+function buildFavoriteViews(
   summaries: readonly ItemSummary[],
   now: number
 ): readonly PostCardView[] {
-  const sorted = [...summaries].sort((left, right) => {
-    const leftAt = resolveEffectiveTimestamp(left, now)
-    const rightAt = resolveEffectiveTimestamp(right, now)
-    if (leftAt !== rightAt) {
-      return rightAt - leftAt
-    }
-    return right.createdAt - left.createdAt
-  })
-  return Object.freeze(sorted.map((summary) => buildPostCardViewFromSummary(summary, now)))
+  const pinned = summaries.filter((s) => typeof s.pinnedAt === 'number')
+  const sorted = [...pinned].sort((a, b) => (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0))
+  return Object.freeze(sorted.map((s) => buildPostCardViewFromSummary(s, now)))
 }
 
-function buildDateKeys(postViews: readonly PostCardView[]): readonly string[] {
-  const seen = new Set<string>()
-  const keys: string[] = []
-  for (const view of postViews) {
-    if (!seen.has(view.dateKey)) {
-      seen.add(view.dateKey)
-      keys.push(view.dateKey)
-    }
-  }
-  return Object.freeze(keys)
-}
-
-Page<RecordsPageData, RecordsPageCustom>({
+Page<FavoritesPageData, FavoritesPageCustom>({
   data: {
     pageReady: false,
     hasItems: false,
     postViews: [],
-    dateKeys: [],
-    scrollIntoViewId: '',
     fadingIds: {},
     ...buildClosedShareFlowView(),
   },
@@ -113,15 +84,11 @@ Page<RecordsPageData, RecordsPageCustom>({
   shareFlow: null as unknown as ShareFlowController,
   summaries: [],
 
-  onLoad(query: Record<string, string | undefined>) {
+  onLoad() {
     this.shareFlow = new ShareFlowController({
       runtime: this.runtime,
       applyShareFlowView: (view) => this.applyShareFlowView(view),
     })
-    if (query.toast) {
-      const message = decodeURIComponent(query.toast)
-      setTimeout(() => showInfoToast(message, 3000), 300)
-    }
   },
 
   onUnload() {
@@ -143,9 +110,7 @@ Page<RecordsPageData, RecordsPageCustom>({
   onShareAppMessage() {
     const preparedShare = this.shareFlow?.getPreparedShare()
     if (!preparedShare) {
-      return {
-        title: '记这里',
-      }
+      return { title: '收藏 - 记这里' }
     }
     return {
       title: '分享快照',
@@ -158,17 +123,16 @@ Page<RecordsPageData, RecordsPageCustom>({
     try {
       const summaries = await this.runtime.listRecent()
       this.summaries = summaries
-      const postViews = buildPostViews(summaries, Date.now())
+      const postViews = buildFavoriteViews(summaries, Date.now())
       this.setData({
         pageReady: true,
         hasItems: postViews.length > 0,
         postViews,
-        dateKeys: buildDateKeys(postViews),
         fadingIds: {},
       })
     } catch (error) {
       this.setData({ pageReady: true })
-      showErrorToast(error, '加载记录失败：')
+      showErrorToast(error, '加载收藏失败：')
     }
   },
 
@@ -178,9 +142,7 @@ Page<RecordsPageData, RecordsPageCustom>({
 
   handleCardTap(event) {
     const id = event.detail.id
-    if (!id) {
-      return
-    }
+    if (!id) return
     wx.navigateTo({
       url: buildPostViewUrl(id),
       fail: (error) => showErrorToast(error, '打开详情失败：'),
@@ -189,10 +151,8 @@ Page<RecordsPageData, RecordsPageCustom>({
 
   async handlePhotoTap(event) {
     const id = event.detail.id
-    const postView = this.data.postViews.find((view) => view.id === id)
-    if (!postView?.photoPath) {
-      return
-    }
+    const postView = this.data.postViews.find((v) => v.id === id)
+    if (!postView?.photoPath) return
     try {
       await previewLocalImage(postView.photoPath)
     } catch (error) {
@@ -202,9 +162,7 @@ Page<RecordsPageData, RecordsPageCustom>({
 
   async handleNavigateTap(event) {
     const id = event.detail.id
-    if (!id) {
-      return
-    }
+    if (!id) return
     try {
       const item = await this.runtime.getItem(id)
       if (!item) {
@@ -219,9 +177,7 @@ Page<RecordsPageData, RecordsPageCustom>({
 
   async handleShareTap(event) {
     const id = event.detail.id
-    if (!id) {
-      return
-    }
+    if (!id) return
     try {
       const item = await this.runtime.getItem(id)
       if (!item) {
@@ -236,32 +192,32 @@ Page<RecordsPageData, RecordsPageCustom>({
 
   async handleFavoriteTap(event) {
     const id = event.detail.id
-    if (!id) {
-      return
-    }
-    const targetView = this.data.postViews.find((view) => view.id === id)
-    if (!targetView) {
-      return
-    }
+    if (!id) return
     try {
-      const nextItem = await this.runtime.setPinned(id, !targetView.isFavorite)
-      const nextViews = this.data.postViews.map((view) =>
-        view.id === id
-          ? { ...view, isFavorite: typeof nextItem.pinnedAt === 'number' }
-          : view
-      )
-      this.setData({ postViews: Object.freeze(nextViews) })
-      showInfoToast(typeof nextItem.pinnedAt === 'number' ? '已收藏' : '已取消收藏')
+      await this.runtime.setPinned(id, false)
+      this.setData({
+        fadingIds: { ...this.data.fadingIds, [id]: true },
+      })
+      setTimeout(() => {
+        this.summaries = this.summaries.filter((s) => s.id !== id)
+        const nextViews = this.data.postViews.filter((v) => v.id !== id)
+        const nextFading = { ...this.data.fadingIds }
+        delete nextFading[id]
+        this.setData({
+          postViews: nextViews,
+          hasItems: nextViews.length > 0,
+          fadingIds: nextFading,
+        })
+        showInfoToast('已取消收藏')
+      }, 220)
     } catch (error) {
-      showErrorToast(error, '收藏失败：')
+      showErrorToast(error, '取消收藏失败：')
     }
   },
 
   handleEditTap(event) {
     const id = event.detail.id
-    if (!id) {
-      return
-    }
+    if (!id) return
     wx.navigateTo({
       url: buildEditRecordUrl(id),
       fail: (error) => showErrorToast(error, '打开编辑失败：'),
@@ -270,20 +226,12 @@ Page<RecordsPageData, RecordsPageCustom>({
 
   async handleDeleteTap(event) {
     const id = event.detail.id
-    if (!id) {
-      return
-    }
+    if (!id) return
     try {
-      const confirmed = await confirmDestructive(
-        '删掉这条？',
-        '删除后无法恢复。',
-        '删掉'
-      )
-      if (!confirmed) {
-        return
-      }
+      const confirmed = await confirmDestructive('删掉这条？', '删除后无法恢复。', '删掉')
+      if (!confirmed) return
 
-      const targetSummary = this.summaries.find((summary) => summary.id === id)
+      const targetSummary = this.summaries.find((s) => s.id === id)
       if (targetSummary && typeof targetSummary.reminderAt === 'number' && targetSummary.reminderAt > Date.now()) {
         const networkType = await this.runtime.getNetworkType()
         if (networkType !== 'none') {
@@ -297,26 +245,20 @@ Page<RecordsPageData, RecordsPageCustom>({
               locationTitle: targetSummary.locationName,
               locationSubtitle: targetSummary.address,
             })
-          } catch {
-            // Best-effort reminder cancellation; deletion still proceeds.
-          }
+          } catch { /* best effort */ }
         }
       }
 
-      this.setData({
-        fadingIds: { ...this.data.fadingIds, [id]: true },
-      })
-
+      this.setData({ fadingIds: { ...this.data.fadingIds, [id]: true } })
       await this.runtime.deleteItem(id)
 
       setTimeout(() => {
-        this.summaries = this.summaries.filter((summary) => summary.id !== id)
-        const nextViews = this.data.postViews.filter((view) => view.id !== id)
+        this.summaries = this.summaries.filter((s) => s.id !== id)
+        const nextViews = this.data.postViews.filter((v) => v.id !== id)
         const nextFading = { ...this.data.fadingIds }
         delete nextFading[id]
         this.setData({
           postViews: nextViews,
-          dateKeys: buildDateKeys(nextViews),
           hasItems: nextViews.length > 0,
           fadingIds: nextFading,
         })
@@ -327,41 +269,13 @@ Page<RecordsPageData, RecordsPageCustom>({
     }
   },
 
-  handleGoFavorites() {
-    wx.navigateTo({
-      url: buildFavoritesUrl(),
-      fail: (error) => showErrorToast(error, '打开收藏失败：'),
-    })
-  },
-
-  handleGoCreate() {
-    wx.navigateTo({
-      url: buildCreateRecordUrl(),
-      fail: (error) => showErrorToast(error, '打开创建失败：'),
-    })
-  },
-
-  handleDateChange(event) {
-    const dateKey = event.detail.dateKey
-    if (!dateKey) {
-      return
-    }
-    const targetView = this.data.postViews.find((view) => view.dateKey === dateKey)
-    if (!targetView) {
-      return
-    }
-    this.setData({ scrollIntoViewId: `post-${targetView.id}` })
-  },
-
   handleShareClose() {
     this.shareFlow.close()
   },
 
   handleShareToggle(event) {
     const selectionKey = event.detail.selectionKey
-    if (!selectionKey) {
-      return
-    }
+    if (!selectionKey) return
     this.shareFlow.toggleSelection(selectionKey)
   },
 

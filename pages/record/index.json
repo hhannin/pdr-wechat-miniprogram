@@ -2,5 +2,8 @@
   "navigationBarTitleText": "记这里",
   "navigationBarBackgroundColor": "#f4efe5",
   "navigationBarTextStyle": "black",
-  "backgroundColor": "#f4efe5"
+  "backgroundColor": "#f4efe5",
+  "usingComponents": {
+    "top-toolbar": "/components/top-toolbar/index"
+  }
 }

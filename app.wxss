@@ -1,6 +1,9 @@
+@import "styles/tokens.wxss";
+
 page {
-  background-color: #f4efe5;
-  color: #223c2b;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-size: var(--font-lg);
 }
 button {
   margin: 0;

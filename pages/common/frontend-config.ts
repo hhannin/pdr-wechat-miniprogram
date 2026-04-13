@@ -1,38 +1,14 @@
-import type { SceneType } from '../../core/types/index'
-
 export const FRONTEND_ROUTES = Object.freeze({
-  scene: '/pages/scene/index',
   records: '/pages/records/index',
   record: '/pages/record/index',
+  postView: '/pages/post-view/index',
+  favorites: '/pages/favorites/index',
   share: '/pages/share/index',
 })
 
-export type RecordPageMode = 'create' | 'view' | 'edit'
+export type RecordPageMode = 'create' | 'edit'
 export type RecordsPageEntryState = 'created'
-export type ScenePageEntryState = 'missing_reminder_item'
 export type RecordPageSource = 'reminder'
-
-export interface FrontendPrimaryNavItem {
-  readonly key: 'scene' | 'records'
-  readonly label: string
-  readonly subtitle: string
-  readonly path: string
-}
-
-export const FRONTEND_PRIMARY_NAV: readonly FrontendPrimaryNavItem[] = Object.freeze([
-  {
-    key: 'scene',
-    label: '记这里',
-    subtitle: '',
-    path: FRONTEND_ROUTES.scene,
-  },
-  {
-    key: 'records',
-    label: '找回去',
-    subtitle: '',
-    path: FRONTEND_ROUTES.records,
-  },
-])
 
 function buildQueryString(params: Readonly<Record<string, string | undefined>>): string {
   const entries = Object.keys(params).reduce((queryEntries, key) => {
@@ -49,33 +25,29 @@ function buildQueryString(params: Readonly<Record<string, string | undefined>>):
 }
 
 export function isRecordPageMode(value: string): value is RecordPageMode {
-  return value === 'create' || value === 'view' || value === 'edit'
+  return value === 'create' || value === 'edit'
 }
 
-export function buildCreateRecordUrl(sceneType: SceneType): string {
+export function buildCreateRecordUrl(): string {
   return `${FRONTEND_ROUTES.record}${buildQueryString({
     mode: 'create',
-    sceneType,
   })}`
 }
 
-export function buildSceneUrl(options: {
-  readonly entryState?: ScenePageEntryState
-} = {}): string {
-  return `${FRONTEND_ROUTES.scene}${buildQueryString({
-    entryState: options.entryState,
+export function buildEditRecordUrl(itemId: string): string {
+  return `${FRONTEND_ROUTES.record}${buildQueryString({
+    mode: 'edit',
+    itemId,
   })}`
 }
 
-export function buildRecordDetailUrl(
+export function buildPostViewUrl(
   itemId: string,
-  mode: Extract<RecordPageMode, 'view' | 'edit'> = 'view',
   options: {
     readonly source?: RecordPageSource
   } = {}
 ): string {
-  return `${FRONTEND_ROUTES.record}${buildQueryString({
-    mode,
+  return `${FRONTEND_ROUTES.postView}${buildQueryString({
     itemId,
     source: options.source,
   })}`
@@ -89,6 +61,10 @@ export function buildRecordsUrl(options: {
     focusItemId: options.focusItemId,
     entryState: options.entryState,
   })}`
+}
+
+export function buildFavoritesUrl(): string {
+  return FRONTEND_ROUTES.favorites
 }
 
 export function buildShareUrl(shareId: string): string {
