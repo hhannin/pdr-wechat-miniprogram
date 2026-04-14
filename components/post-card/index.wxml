@@ -49,15 +49,21 @@
       </view>
     </view>
 
-    <view class="post-card-actions">
-      <view class="post-card-action" catchtap="handleNavigate" hover-class="post-card-action-pressed">
-        <image class="post-card-action-icon" src="/assets/icons/ic-navigate-line.svg" mode="aspectFit" />
-      </view>
+	    <view class="post-card-actions">
+	      <view class="post-card-action" catchtap="handleNavigate" hover-class="post-card-action-pressed">
+	        <image class="post-card-action-icon" src="/assets/icons/ic-navigate-line.svg" mode="aspectFit" />
+	      </view>
 
-      <block wx:if="{{mode === 'detail'}}">
-        <view class="post-card-action" catchtap="handleShare" hover-class="post-card-action-pressed">
-          <image class="post-card-action-icon" src="/assets/icons/ic-share-line.svg" mode="aspectFit" />
-        </view>
+	      <block wx:if="{{mode === 'list'}}">
+	        <view class="post-card-action" catchtap="handleDelete" hover-class="post-card-action-pressed">
+	          <image class="post-card-action-icon" src="/assets/icons/ic-delete-line.svg" mode="aspectFit" />
+	        </view>
+	      </block>
+
+	      <block wx:if="{{mode === 'detail'}}">
+	        <view class="post-card-action" catchtap="handleShare" hover-class="post-card-action-pressed">
+	          <image class="post-card-action-icon" src="/assets/icons/ic-share-line.svg" mode="aspectFit" />
+	        </view>
 
         <block wx:if="{{actionsExpanded}}">
           <view class="post-card-action" catchtap="handleFavorite" hover-class="post-card-action-pressed">
