@@ -314,13 +314,23 @@ export interface PostHeadlineInput {
 
 export function buildPostHeadline(input: PostHeadlineInput): string {
   const sceneLabel = getSceneLabel(input.sceneType)
-  const addressText =
-    trimOptionalString(input.address) ??
-    trimOptionalString(input.locationName) ??
-    '未命名位置'
+  const locationNameText = trimOptionalString(input.locationName)
+  const addressText = trimOptionalString(input.address)
+  const locationParts: string[] = []
+
+  if (locationNameText) {
+    locationParts.push(locationNameText)
+  }
+
+  if (addressText && addressText !== locationNameText) {
+    locationParts.push(addressText)
+  }
+
+  const baseLocationText =
+    locationParts.length > 0 ? locationParts.join(' · ') : '未命名位置'
   const anchorsText = input.primaryAnchors.length > 0 ? input.primaryAnchors.join(' · ') : ''
   const locationText =
-    anchorsText.length > 0 ? `${addressText} · ${anchorsText}` : addressText
+    anchorsText.length > 0 ? `${baseLocationText} · ${anchorsText}` : baseLocationText
   return `${sceneLabel} ｜ ${locationText}`
 }
 
