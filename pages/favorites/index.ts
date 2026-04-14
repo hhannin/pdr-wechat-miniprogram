@@ -127,7 +127,7 @@ Page<FavoritesPageData, FavoritesPageCustom>({
       return { title: '收藏 - 记这里' }
     }
     return {
-      title: '分享快照',
+      title: preparedShare.shareCardTitle || '分享快照',
       path: this.runtime.buildSharePath(preparedShare.shareId),
       imageUrl: SHARE_COVER_IMAGE_URL,
     }

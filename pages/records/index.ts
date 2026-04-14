@@ -162,7 +162,7 @@ Page<RecordsPageData, RecordsPageCustom>({
       }
     }
     return {
-      title: '分享快照',
+      title: preparedShare.shareCardTitle || '分享快照',
       path: this.runtime.buildSharePath(preparedShare.shareId),
       imageUrl: SHARE_COVER_IMAGE_URL,
     }

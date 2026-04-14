@@ -80,7 +80,7 @@ Page<SharePageData, SharePageCustom>({
       return { title: '分享快照', path: FRONTEND_ROUTES.record }
     }
     return {
-      title: '分享快照',
+      title: this.currentSharedItem?.location.name || '分享快照',
       path: buildShareUrl(this.shareId),
       imageUrl: SHARE_COVER_IMAGE_URL,
     }
