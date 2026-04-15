@@ -21,7 +21,11 @@ import {
   updateFieldViewsByKey,
   type FrontendFieldView,
 } from '../common/frontend-presenters'
-import { buildRecordsUrl, type RecordPageMode } from '../common/frontend-config'
+import {
+  FRONTEND_ROUTES,
+  buildRecordsUrl,
+  type RecordPageMode,
+} from '../common/frontend-config'
 import { REMINDER_SUBSCRIBE_TEMPLATE_IDS } from '../common/reminder-config'
 import {
   showErrorToast,
@@ -73,6 +77,7 @@ interface RecordPageCustom {
   reminderAtDraft: TimestampMs | undefined
   reminderSyncStateDraft: ReminderSyncState | undefined
   onLoad(query: Record<string, string | undefined>): Promise<void>
+  onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent
   handlePickLocation(): Promise<void>
   handleNoteInput(event: WechatMiniprogram.CustomEvent<{ value: string }>): void
   handleReminderToggle(event: WechatMiniprogram.CustomEvent<{ value: boolean }>): void
@@ -262,6 +267,13 @@ Page<RecordPageData, RecordPageCustom>({
       fieldViews: buildFieldViews(DEFAULT_SCENE_TYPE, {}),
       textareaReady: true,
     })
+  },
+
+  onShareAppMessage() {
+    return {
+      title: '记这里',
+      path: FRONTEND_ROUTES.record,
+    }
   },
 
   async handlePickLocation() {
