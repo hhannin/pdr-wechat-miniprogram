@@ -1,8 +1,23 @@
-# 微信开发者工具
-/miniprogram_npm/
-/project.config.json
-/.idea/
-/node_modules/
-/dist/
-/npm-debug.log
+# macOS
+.DS_Store
+
+# Local editor and WeChat DevTools state
+.claude/
+.idea/
+project.private.config.json
+说明.txt
+
+# Dependencies and build outputs
+node_modules/
+miniprogram/miniprogram_npm/
+dist/
+miniprogram/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 *.log
+
+# TypeScript build artifacts generated beside miniprogram sources.
+# Cloud functions are JavaScript source and are intentionally not ignored.
+miniprogram/**/*.js
+miniprogram/**/*.js.map

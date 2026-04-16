@@ -1,0 +1,8 @@
+# 微信开发者工具
+/miniprogram_npm/
+/project.config.json
+/.idea/
+/node_modules/
+/dist/
+/npm-debug.log
+*.log
